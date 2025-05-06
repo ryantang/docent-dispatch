@@ -39,46 +39,50 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Start the Python backend server
-  log("Starting the Python backend server...", "python");
-  const pythonServer = spawn("python", ["run_python_server.py"], {
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  
-  pythonServer.stdout.on("data", (data) => {
-    log(`${data}`, "python");
-  });
-  
-  pythonServer.stderr.on("data", (data) => {
-    log(`ERROR: ${data}`, "python");
-  });
-  
-  pythonServer.on("close", (code) => {
-    log(`Python server process exited with code ${code}`, "python");
+  // Start the Python backend server only if not skipped
+  if (process.env.SKIP_PYTHON_SERVER !== 'true') {
+    log("Starting the Python backend server...", "python");
+    const pythonServer = spawn("python", ["run_python_server.py"], {
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
     
-    // Attempt to restart if it crashes
-    if (code !== 0) {
-      log("Attempting to restart Python server...", "python");
-      setTimeout(() => {
-        const restartedServer = spawn("python", ["run_python_server.py"], {
-          detached: true,
-          stdio: ['ignore', 'pipe', 'pipe']
-        });
-        
-        restartedServer.stdout.on("data", (data) => {
-          log(`${data}`, "python");
-        });
-        
-        restartedServer.stderr.on("data", (data) => {
-          log(`ERROR: ${data}`, "python");
-        });
-      }, 1000);
-    }
-  });
+    pythonServer.stdout.on("data", (data) => {
+      log(`${data}`, "python");
+    });
+    
+    pythonServer.stderr.on("data", (data) => {
+      log(`ERROR: ${data}`, "python");
+    });
+    
+    pythonServer.on("close", (code) => {
+      log(`Python server process exited with code ${code}`, "python");
+      
+      // Attempt to restart if it crashes
+      if (code !== 0) {
+        log("Attempting to restart Python server...", "python");
+        setTimeout(() => {
+          const restartedServer = spawn("python", ["run_python_server.py"], {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+          
+          restartedServer.stdout.on("data", (data) => {
+            log(`${data}`, "python");
+          });
+          
+          restartedServer.stderr.on("data", (data) => {
+            log(`ERROR: ${data}`, "python");
+          });
+        }, 1000);
+      }
+    });
 
-  // Give the Python server some time to start up
-  await new Promise(resolve => setTimeout(resolve, 3000));
+    // Give the Python server some time to start up
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  } else {
+    log("Skipping Python server start (using externally started server)", "python");
+  }
   
   const server = await registerRoutes(app);
 
@@ -99,15 +103,16 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
+  // Serve the app on the configured port or default to 5000
   // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  const port = parseInt(process.env.PORT || "5000", 10);
+  const host = process.env.HOST || "0.0.0.0";
+  
   server.listen({
     port,
-    host: "0.0.0.0",
+    host,
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on ${host}:${port}`);
   });
 })();
