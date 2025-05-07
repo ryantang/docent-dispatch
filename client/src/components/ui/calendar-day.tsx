@@ -58,11 +58,13 @@ export function CalendarDay({
       </div>
       
       <div className="px-1 pb-1">
-        {amTag && (
+        {amTag ? (
           <div 
             className={`
               text-xs p-2 rounded mb-1
-              ${amTag.status === "requested" ? "tag-requested" : "tag-filled"}
+              ${amTag.status === "requested" 
+                ? "bg-amber-100 border border-amber-600 text-amber-600" 
+                : "bg-green-100 border border-green-600 text-green-600"}
             `}
             onClick={(e) => {
               e.stopPropagation();
@@ -74,13 +76,26 @@ export function CalendarDay({
               {amTag.status === "requested" ? "Requested" : "Filled"}
             </div>
           </div>
+        ) : !isPast && (
+          <div 
+            className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDayClick(new Date(date.setHours(9, 0, 0, 0))); // 9 AM
+            }}
+          >
+            <div className="font-medium">AM Slot</div>
+            <div className="text-gray-500">Click to request</div>
+          </div>
         )}
         
-        {pmTag && (
+        {pmTag ? (
           <div 
             className={`
               text-xs p-2 rounded mb-1
-              ${pmTag.status === "requested" ? "tag-requested" : "tag-filled"}
+              ${pmTag.status === "requested" 
+                ? "bg-amber-100 border border-amber-600 text-amber-600" 
+                : "bg-green-100 border border-green-600 text-green-600"}
             `}
             onClick={(e) => {
               e.stopPropagation();
@@ -92,31 +107,17 @@ export function CalendarDay({
               {pmTag.status === "requested" ? "Requested" : "Filled"}
             </div>
           </div>
-        )}
-        
-        {!isPast && !amTag && !pmTag && (
-          <>
-            <div 
-              className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDayClick(new Date(date.setHours(9, 0, 0, 0))); // 9 AM
-              }}
-            >
-              <div className="font-medium">AM Slot</div>
-              <div className="text-gray-500">Click to request</div>
-            </div>
-            <div 
-              className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDayClick(new Date(date.setHours(13, 0, 0, 0))); // 1 PM
-              }}
-            >
-              <div className="font-medium">PM Slot</div>
-              <div className="text-gray-500">Click to request</div>
-            </div>
-          </>
+        ) : !isPast && (
+          <div 
+            className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDayClick(new Date(date.setHours(13, 0, 0, 0))); // 1 PM
+            }}
+          >
+            <div className="font-medium">PM Slot</div>
+            <div className="text-gray-500">Click to request</div>
+          </div>
         )}
       </div>
     </div>

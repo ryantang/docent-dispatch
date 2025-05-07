@@ -110,7 +110,7 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
       {/* Calendar Legend */}
       <div className="flex flex-wrap gap-4 mb-4">
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-accent-light border border-accent mr-2"></div>
+          <div className="w-4 h-4 bg-amber-100 border border-amber-600 mr-2"></div>
           <span className="text-sm">Tag Requested</span>
         </div>
         <div className="flex items-center">
