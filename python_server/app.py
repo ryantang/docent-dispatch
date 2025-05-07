@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
@@ -11,7 +11,10 @@ import secrets
 load_dotenv()
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, 
+    static_folder='../dist/public',
+    static_url_path=''
+)
 
 # Configure CORS
 CORS(app, supports_credentials=True, origins="*")
@@ -37,6 +40,15 @@ from python_server.routes import register_routes
 
 # Register all routes with the app
 register_routes(app)
+
+# Serve the frontend
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 # Error handler for all exceptions
 @app.errorhandler(Exception)

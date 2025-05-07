@@ -19,6 +19,7 @@ __pycache__/
 *.so
 .Python
 python_server/flask_session/
+.python-version
 
 # Local development
 .vscode/
