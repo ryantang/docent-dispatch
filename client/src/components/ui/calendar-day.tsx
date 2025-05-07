@@ -39,7 +39,7 @@ export function CalendarDay({
   return (
     <div 
       className={`
-        border rounded-lg overflow-hidden calendar-date
+        border border-gray-300 rounded-lg overflow-hidden calendar-date
         ${!isInCurrentMonth ? 'opacity-50' : ''}
         ${isPast ? 'date-past' : 'cursor-pointer hover:bg-gray-50'}
         ${isToday ? 'bg-gray-50' : ''}
@@ -61,7 +61,7 @@ export function CalendarDay({
         {amTag ? (
           <div 
             className={`
-              text-xs p-2 rounded mb-1
+              text-sm p-2 rounded mb-1
               ${amTag.status === "requested" 
                 ? "bg-amber-100 border border-amber-600 text-amber-600" 
                 : "bg-green-100 border border-green-600 text-green-600"}
@@ -78,7 +78,7 @@ export function CalendarDay({
           </div>
         ) : !isPast && (
           <div 
-            className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
+            className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               onDayClick(new Date(date.setHours(9, 0, 0, 0))); // 9 AM
@@ -92,7 +92,7 @@ export function CalendarDay({
         {pmTag ? (
           <div 
             className={`
-              text-xs p-2 rounded mb-1
+              text-sm p-2 rounded mb-1
               ${pmTag.status === "requested" 
                 ? "bg-amber-100 border border-amber-600 text-amber-600" 
                 : "bg-green-100 border border-green-600 text-green-600"}
@@ -109,7 +109,7 @@ export function CalendarDay({
           </div>
         ) : !isPast && (
           <div 
-            className="border border-dashed border-gray-300 text-xs p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
+            className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               onDayClick(new Date(date.setHours(13, 0, 0, 0))); // 1 PM
