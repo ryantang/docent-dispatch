@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, primaryKey, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -44,7 +44,7 @@ export const passwordResetSchema = z.object({
 // Tag requests model
 export const tagRequests = pgTable("tag_requests", {
   id: serial("id").primaryKey(),
-  date: timestamp("date").notNull(),
+  date: date("date").notNull(),
   timeSlot: text("time_slot").notNull(), // AM or PM
   status: text("status").notNull().default("requested"), // requested, filled, cancelled
   newDocentId: integer("new_docent_id").notNull(),

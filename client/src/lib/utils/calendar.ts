@@ -8,7 +8,9 @@ import {
   isToday, 
   isBefore, 
   format, 
-  addDays 
+  addDays,
+  isSameDay,
+  parseISO
 } from "date-fns";
 import { TagRequest } from "@shared/schema";
 
@@ -68,9 +70,8 @@ export function isTimeSlotAvailable(
   timeSlot: string, 
   tagRequests: TagRequest[]
 ): boolean {
-  const dateString = date.toDateString();
   return !tagRequests.some(tag => 
-    new Date(tag.date).toDateString() === dateString && 
+    isSameDay(parseISO(tag.date), date) && 
     tag.timeSlot === timeSlot
   );
 }
@@ -83,9 +84,8 @@ export function findTagRequest(
   timeSlot: string, 
   tagRequests: TagRequest[]
 ): TagRequest | undefined {
-  const dateString = date.toDateString();
   return tagRequests.find(tag => 
-    new Date(tag.date).toDateString() === dateString && 
+    isSameDay(parseISO(tag.date), date) && 
     tag.timeSlot === timeSlot
   );
 }

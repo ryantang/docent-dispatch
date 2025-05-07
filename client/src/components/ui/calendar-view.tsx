@@ -9,7 +9,9 @@ import {
   isToday,
   isBefore,
   format,
-  addDays
+  addDays,
+  isSameDay,
+  parseISO
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -149,7 +151,7 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
                 isPast={isBefore(day, addDays(today, 1)) && !isToday(day)}
                 isToday={isToday(day)}
                 tagRequests={tagRequests?.filter(tag => 
-                  new Date(tag.date).toDateString() === day.toDateString()
+                  isSameDay(parseISO(tag.date), day)
                 ) || []}
                 onDayClick={onDaySelect}
                 onTagClick={onTagSelect}

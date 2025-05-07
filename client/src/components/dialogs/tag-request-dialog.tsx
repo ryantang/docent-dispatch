@@ -23,8 +23,11 @@ export function TagRequestDialog({ isOpen, onClose, date, timeSlot }: Props) {
     mutationFn: async () => {
       if (!date || !timeSlot || !user) return;
       
+      // Format the date as YYYY-MM-DD without time component
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
       const response = await apiRequest("POST", "/api/tag-requests", {
-        date: date.toISOString(),
+        date: dateStr,
         timeSlot,
         newDocentId: user.id,
       });

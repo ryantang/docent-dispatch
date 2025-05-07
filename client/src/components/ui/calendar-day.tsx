@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isSameDay, parseISO } from "date-fns";
 import { TagRequest } from "@shared/schema";
 
 type Props = {
@@ -21,11 +21,11 @@ export function CalendarDay({
   onTagClick,
 }: Props) {
   const amTag = tagRequests.find(tag => 
-    tag.timeSlot === "AM" && new Date(tag.date).toDateString() === date.toDateString()
+    tag.timeSlot === "AM" && isSameDay(parseISO(tag.date), date)
   );
   
   const pmTag = tagRequests.find(tag => 
-    tag.timeSlot === "PM" && new Date(tag.date).toDateString() === date.toDateString()
+    tag.timeSlot === "PM" && isSameDay(parseISO(tag.date), date)
   );
   
   const dayNumber = date.getDate();
