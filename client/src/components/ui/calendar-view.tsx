@@ -28,7 +28,11 @@ type Props = {
 };
 
 export function CalendarView({ onDaySelect, onTagSelect }: Props) {
-  const [today] = useState(new Date());
+  const [today] = useState(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  });
   const [currentDate, setCurrentDate] = useState(today);
   const { user } = useAuth();
   
@@ -148,7 +152,7 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
                 key={`${weekIndex}-${dayIndex}`}
                 date={day}
                 isInCurrentMonth={isSameMonth(day, currentDate)}
-                isPast={isBefore(day, addDays(today, 1)) && !isToday(day)}
+                isPast={isBefore(day, today) || isToday(day)}
                 isToday={isToday(day)}
                 tagRequests={tagRequests?.filter(tag => 
                   isSameDay(parseISO(tag.date), day)
