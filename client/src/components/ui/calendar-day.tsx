@@ -30,21 +30,14 @@ export function CalendarDay({
   
   const dayNumber = date.getDate();
   
-  const handleDayClick = () => {
-    if (!isPast) {
-      onDayClick(date);
-    }
-  };
-  
   return (
     <div 
       className={`
         border border-gray-300 rounded-lg overflow-hidden calendar-date
         ${!isInCurrentMonth ? 'opacity-50' : ''}
-        ${isPast ? 'date-past' : 'cursor-pointer hover:bg-gray-50'}
+        ${isPast ? 'opacity-50' : ''}
         ${isToday ? 'bg-gray-50' : ''}
       `}
-      onClick={handleDayClick}
     >
       <div className="p-2 text-right">
         <span className={`font-medium ${isToday ? 'text-primary' : ''}`}>
