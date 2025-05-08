@@ -1,5 +1,6 @@
 import { format, isSameDay, parseISO } from "date-fns";
 import { TagRequest } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 type Props = {
   date: Date;
@@ -20,6 +21,9 @@ export function CalendarDay({
   onDayClick,
   onTagClick,
 }: Props) {
+  const { user } = useAuth();
+  const isNewDocent = user?.role === 'new_docent';
+  
   const amTag = tagRequests.find(tag => 
     tag.timeSlot === "AM" && isSameDay(parseISO(tag.date), date)
   );
@@ -29,6 +33,29 @@ export function CalendarDay({
   );
   
   const dayNumber = date.getDate();
+
+  const renderTagContent = (tag: TagRequest) => {
+    const newDocentName = tag.newDocent ? `${tag.newDocent.firstName} ${tag.newDocent.lastName}` : 'You';
+    const seasonedDocentName = tag.seasonedDocent ? `${tag.seasonedDocent.firstName} ${tag.seasonedDocent.lastName}` : 'Seasoned Docent';
+
+    if (tag.status === "requested") {
+      if (isNewDocent) {
+        return `Requested - ${newDocentName}`;
+      } else {
+        return `Requested - ${newDocentName}`;
+      }
+    } else {
+      return `Filled - ${seasonedDocentName} & ${newDocentName}`;
+    }
+  };
+
+  const shouldShowTag = (tag: TagRequest) => {
+    if (isNewDocent) {
+      return tag.newDocentId === user?.id;
+    } else {
+      return tag.status === "requested" || tag.seasonedDocentId === user?.id;
+    }
+  };
   
   return (
     <div 
@@ -37,6 +64,7 @@ export function CalendarDay({
         ${!isInCurrentMonth ? 'opacity-50' : ''}
         ${isPast ? 'opacity-50' : ''}
         ${isToday ? 'bg-gray-50' : ''}
+        h-48
       `}
     >
       <div className="p-2 text-right">
@@ -51,7 +79,7 @@ export function CalendarDay({
       </div>
       
       <div className="px-1 pb-1">
-        {amTag ? (
+        {amTag && shouldShowTag(amTag) ? (
           <div 
             className={`
               text-sm p-2 rounded mb-1
@@ -66,10 +94,10 @@ export function CalendarDay({
           >
             <div className="font-medium">AM Tag</div>
             <div className="text-gray-600">
-              {amTag.status === "requested" ? "Requested" : "Filled"}
+              {renderTagContent(amTag)}
             </div>
           </div>
-        ) : !isPast && (
+        ) : !isPast && isNewDocent && (
           <div 
             className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {
@@ -82,7 +110,7 @@ export function CalendarDay({
           </div>
         )}
         
-        {pmTag ? (
+        {pmTag && shouldShowTag(pmTag) ? (
           <div 
             className={`
               text-sm p-2 rounded mb-1
@@ -97,10 +125,10 @@ export function CalendarDay({
           >
             <div className="font-medium">PM Tag</div>
             <div className="text-gray-600">
-              {pmTag.status === "requested" ? "Requested" : "Filled"}
+              {renderTagContent(pmTag)}
             </div>
           </div>
-        ) : !isPast && (
+        ) : !isPast && isNewDocent && (
           <div 
             className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {

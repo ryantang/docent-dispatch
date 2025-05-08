@@ -37,7 +37,7 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
   const { user } = useAuth();
   
   // Get the date range for display (previous week, current week, and 4 future weeks)
-  const calendarStartDate = startOfWeek(subWeeks(currentDate, 1), { weekStartsOn: 0 });
+  const calendarStartDate = startOfWeek(currentDate, { weekStartsOn: 0 });
   const calendarEndDate = endOfWeek(addWeeks(currentDate, 4), { weekStartsOn: 0 });
   
   // Fetch tag requests for the date range
@@ -77,12 +77,28 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
   });
   
   // Navigation functions
-  const goToPreviousWeek = () => {
-    setCurrentDate(prevDate => subWeeks(prevDate, 1));
+  const goToPreviousMonth = () => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(1); // Set to first of month
+      newDate.setMonth(newDate.getMonth() - 1);
+      return newDate;
+    });
   };
   
-  const goToNextWeek = () => {
-    setCurrentDate(prevDate => addWeeks(prevDate, 1));
+  const goToNextMonth = () => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(1); // Set to first of month
+      newDate.setMonth(newDate.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  const goToToday = () => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    setCurrentDate(now);
   };
   
   return (
@@ -91,10 +107,17 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
         <h2 className="text-2xl font-semibold text-gray-800">Tag Schedule</h2>
         
         <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToToday}
+          >
+            Today
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={goToPreviousWeek}
+            onClick={goToPreviousMonth}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -104,7 +127,7 @@ export function CalendarView({ onDaySelect, onTagSelect }: Props) {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={goToNextWeek}
+            onClick={goToNextMonth}
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
