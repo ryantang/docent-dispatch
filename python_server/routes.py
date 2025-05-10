@@ -1,7 +1,9 @@
 from flask import jsonify, request, session
 from python_server.models import User, TagRequest, PasswordResetToken, db
+from python_server.utils import send_email_confirmation
 from datetime import datetime, timedelta
 import secrets
+import logging
 from functools import wraps
 from sqlalchemy import or_, and_
 
@@ -396,6 +398,9 @@ def register_routes(app):
             if tag.status == 'requested':
                 tag.seasoned_docent_id = user_id
                 tag.status = 'filled'
+                logging.info(f"Sending email confirmation for tag {tag.id}")
+                print(f"calling send_email_confirmation for tag {tag.id}")
+                send_email_confirmation(tag)
             else:
                 return jsonify({"error": "This tag request is no longer available"}), 400
         

@@ -1,15 +1,22 @@
 from datetime import datetime
-from twilio.rest import Client
+import boto3
+from botocore.exceptions import ClientError
 import os
 
-def format_tag_request_email(params):
+AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
+
+
+def format_tag_scheduling_email(tag):
     """Format email for tag request notification"""
-    new_docent_name = f"{params['new_docent'].first_name} {params['new_docent'].last_name}"
-    new_docent_email = params['new_docent'].email
-    seasoned_docent_name = f"{params['seasoned_docent'].first_name} {params['seasoned_docent'].last_name}"
-    seasoned_docent_email = params['seasoned_docent'].email
-    tag_date = params['tag_date'].strftime('%A, %B %d, %Y')
-    tag_time_slot = params['tag_time_slot']
+    new_docent_name = f"{tag.new_docent.first_name} {tag.new_docent.last_name}"
+    new_docent_email = tag.new_docent.email
+    new_docent_phone = tag.new_docent.phone
+    seasoned_docent_name = f"{tag.seasoned_docent.first_name} {tag.seasoned_docent.last_name}"
+    seasoned_docent_email = tag.seasoned_docent.email
+    seasoned_docent_phone = tag.seasoned_docent.phone
+    tag_date = tag.date.strftime('%A, %B %d, %Y')
+    tag_time_slot = tag.time_slot
+
     
     subject = f"SF Zoo Tag-Along Scheduled: {tag_date} ({tag_time_slot})"
     
@@ -21,44 +28,81 @@ A tag-along has been scheduled for:
 Date: {tag_date}
 Time: {tag_time_slot}
 
-New Docent: {new_docent_name} ({new_docent_email})
-Seasoned Docent: {seasoned_docent_name} ({seasoned_docent_email})
+{new_docent_name}: {new_docent_phone}
+{seasoned_docent_name}: {seasoned_docent_phone}
 
-Please communicate directly to agree on a specific meeting time and location within the Zoo.
+Please arrange a specific time and place to meet at the Zoo for your tag.  Your phone numbers are listed above.  
+Please make sure to contact your tagging partner if you have any late breaking schedule changes or if there is rain in the forecast. If your tag date changes, please also contact me right away.
 
-If you need to cancel or reschedule, please do so at least 24 hours in advance through the SF Zoo Docent Matching app.
+The active docent (seasoned) will be filling out a Tag Assesement Google Form after your tag. Please give feedback verbally as well, so that the new docent can benefit from the advice before their next tag.
+Tell them as specifically as possible what they did well and what you think will help them improve going forward. We find that specific feedback and advice is most beneficial.  
 
 Thank you for your participation in the docent program!
 
 Best regards,
 SF Zoo Docent Program Coordinator
 """
-    
+
     return {
         "subject": subject,
         "body": body
     }
 
-def send_sms_notification(to_phone, message):
-    """Send SMS notification using Twilio"""
-    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
-    from_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+def send_email_confirmation(tag):
+    print(f"inside send_email_confirmation for tag {tag.id}")
+    """
+    Send an email to three recipients using AWS SES.
     
-    # Only send if Twilio credentials are configured
-    if account_sid and auth_token and from_phone and to_phone:
-        try:
-            client = Client(account_sid, auth_token)
-            message = client.messages.create(
-                body=message,
-                from_=from_phone,
-                to=to_phone
-            )
-            return True
-        except Exception as e:
-            print(f"Failed to send SMS: {str(e)}")
-            return False
+    Args:
+        params (dict): Dictionary containing the recipient objects and other parameters
+                       needed for the email formatting.
     
-    # Log the message for development
-    print(f"SMS Notification to {to_phone}: {message}")
-    return False
+    Returns:
+        dict: Response from the SES send_email API call, or error information.
+    """
+    # Get the formatted email content
+
+    email_content = format_tag_scheduling_email(tag)
+    subject = email_content["subject"]
+    body = email_content["body"]
+
+    
+    # Get recipient email addresses
+    recipients = [
+        tag.seasoned_docent.email,
+        tag.new_docent.email,
+        #TODO: Add coordinator to email
+    ]
+    
+    # Create an SES client
+    print(f"creating ses client")
+    ses_client = boto3.client('ses', region_name='us-west-2')  # Replace with your preferred AWS region
+    
+    # Configure the email
+    email_message = {
+        'Subject': {
+            'Data': subject
+        },
+        'Body': {
+            'Html': {
+                'Data': body
+            }
+        }
+    }
+    
+    try:
+        # Send the email
+        print(f"sending email")
+        response = ses_client.send_email(
+            Source= os.getenv('SOURCE_EMAIL'),  # Replace with your verified sender email
+            Destination={
+                'ToAddresses': recipients
+            },
+            Message=email_message
+        )
+        print(f"email sent")
+        return {"success": True, "message_id": response['MessageId']}
+    except ClientError as e:
+        print(f"error sending email: {e}")
+        return {"success": False, "error": str(e)}
+
