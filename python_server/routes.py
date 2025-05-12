@@ -53,37 +53,15 @@ def register_routes(app):
     @app.route('/api/login', methods=['POST'])
     def login():
         data = request.json
-        user = User.query.filter_by(email=data['email']).first()
+        user_data, status_code = UserService.login_user(data)
         
-        # Check if account is locked
-        if user and user.account_locked_until and user.account_locked_until > datetime.utcnow():
-            lock_remaining = (user.account_locked_until - datetime.utcnow()).total_seconds() / 60
-            return jsonify({
-                "error": f"Account is locked. Try again in {int(lock_remaining)} minutes."
-            }), 403
-        
-        # Verify credentials
-        if not user or not user.verify_password(data['password']):
-            if user:
-                user.failed_login_attempts += 1
-                
-                # Lock account after 5 failed attempts
-                if user.failed_login_attempts >= 5:
-                    user.account_locked_until = datetime.utcnow() + timedelta(minutes=15)
-                
-                db.session.commit()
-                
-            return jsonify({"error": "Invalid email or password"}), 401
-        
-        # Reset failed login attempts on successful login
-        user.failed_login_attempts = 0
-        user.account_locked_until = None
-        db.session.commit()
+        if 'error' in user_data:
+            return jsonify(user_data), status_code
         
         # Set user in session
-        session['user_id'] = user.id
+        session['user_id'] = user_data['id']
         
-        return jsonify(user.to_dict())
+        return jsonify(user_data), status_code
     
     @app.route('/api/logout', methods=['POST'])
     def logout():
