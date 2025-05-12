@@ -1,5 +1,7 @@
 from flask import jsonify, request, session
-from python_server.models import User, TagRequest, db
+from python_server.app import db
+from python_server.domain.users.model import User
+from python_server.domain.tags.model import TagRequest
 from python_server.utils import send_email_confirmation
 from datetime import datetime, timedelta
 import secrets
