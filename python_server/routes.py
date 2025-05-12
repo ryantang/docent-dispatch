@@ -6,6 +6,7 @@ import secrets
 import logging
 from functools import wraps
 from sqlalchemy import or_, and_
+from python_server.domain.users.service import UserService
 
 # Authentication decorator
 def login_required(f):
@@ -39,29 +40,15 @@ def register_routes(app):
     @app.route('/api/register', methods=['POST'])
     def register():
         data = request.json
+        user_data, status_code = UserService.register_user(data)
         
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=data['email']).first()
-        if existing_user:
-            return jsonify({"error": "Email already registered"}), 400
-        
-        # Create new user
-        new_user = User(
-            email=data['email'],
-            password=User.hash_password(data['password']),
-            first_name=data['firstName'],
-            last_name=data['lastName'],
-            phone=data.get('phone'),
-            role=data['role']
-        )
-        
-        db.session.add(new_user)
-        db.session.commit()
+        if 'error' in user_data:
+            return jsonify(user_data), status_code
         
         # Automatically log in the user
-        session['user_id'] = new_user.id
+        session['user_id'] = user_data['id']
         
-        return jsonify(new_user.to_dict()), 201
+        return jsonify(user_data), status_code
     
     @app.route('/api/login', methods=['POST'])
     def login():
