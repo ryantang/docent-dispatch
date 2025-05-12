@@ -9,6 +9,7 @@ import logging
 from functools import wraps
 from sqlalchemy import or_, and_
 from python_server.domain.users.service import UserService
+from python_server.domain.tags.service import TagRequestService
 
 # Authentication decorator
 def login_required(f):
@@ -106,28 +107,7 @@ def register_routes(app):
         start_date = request.args.get('startDate')
         end_date = request.args.get('endDate')
         
-        query = TagRequest.query
-        
-        # Filter by date range if provided
-        if start_date and end_date:
-            start = datetime.fromisoformat(start_date.split('T')[0])
-            end = datetime.fromisoformat(end_date.split('T')[0])
-            query = query.filter(TagRequest.date.between(start, end))
-        
-        # Coordinators can see all tag requests
-        if user.role == 'coordinator':
-            tag_requests = query.all()
-        # Seasoned docents see their own tags and open requests
-        elif user.role == 'seasoned_docent':
-            tag_requests = query.filter(
-                or_(
-                    TagRequest.status == 'requested',
-                    TagRequest.seasoned_docent_id == user_id
-                )
-            ).all()
-        # New docents only see their own requests
-        else:
-            tag_requests = query.filter_by(new_docent_id=user_id).all()
+        tag_requests = TagRequestService.get_tag_requests(user, start_date, end_date)
         
         return jsonify([tag.to_dict() for tag in tag_requests])
     
