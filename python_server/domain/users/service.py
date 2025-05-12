@@ -1,5 +1,7 @@
 from python_server.domain.users.repository import UserRepository
+from python_server.domain.users.model import User
 from datetime import datetime, timedelta
+import secrets
 
 class UserService:
     @staticmethod
@@ -47,3 +49,41 @@ class UserService:
         UserRepository.update_user(user)
         
         return user.to_dict(), 200
+
+    @staticmethod
+    def request_password_reset(email):
+        user = UserRepository.get_user_by_email(email)
+        
+        if user:
+            # Invalidate existing tokens
+            UserRepository.invalidate_existing_tokens(user.id)
+            
+            print(f"Invalidating existing tokens for user {user.id}")
+
+            # Create a new token
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.utcnow() + timedelta(hours=1)
+            UserRepository.create_password_reset_token(user.id, token, expires_at)
+            
+            # For demo purposes, log the token to the console
+            #TODO: Remove this and send the email with the reset link
+            reset_link = f"/reset-password?token={token}"
+            print(f"Password reset link for {user.email}: {reset_link}")
+
+    @staticmethod
+    def reset_password(token, new_password):
+        token_record = UserRepository.get_token_record(token)
+        
+        if not token_record or token_record.expires_at < datetime.utcnow():
+            return {"error": "Invalid or expired token"}, 400
+        
+        # Update the user's password
+        user = UserRepository.get_user_by_email(token_record.user_id)
+        user.password = User.hash_password(new_password)
+        
+        # Mark token as used
+        token_record.used = True
+        
+        UserRepository.update_user(user)
+        
+        return {"success": True}

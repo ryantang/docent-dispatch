@@ -1,5 +1,5 @@
 from flask import jsonify, request, session
-from python_server.models import User, TagRequest, PasswordResetToken, db
+from python_server.models import User, TagRequest, db
 from python_server.utils import send_email_confirmation
 from datetime import datetime, timedelta
 import secrets
@@ -79,55 +79,18 @@ def register_routes(app):
     @app.route('/api/request-password-reset', methods=['POST'])
     def request_password_reset():
         data = request.json
-        user = User.query.filter_by(email=data['email']).first()
-        
-        if user:
-            # Invalidate existing tokens
-            PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
-            
-            # Create a new token
-            token = secrets.token_urlsafe(32)
-            reset_token = PasswordResetToken(
-                user_id=user.id,
-                token=token,
-                expires_at=datetime.utcnow() + timedelta(hours=1)
-            )
-            
-            db.session.add(reset_token)
-            db.session.commit()
-            
-            # In a real app, we would send an email with the reset link
-            # For demo purposes, log the token to the console
-            reset_link = f"/reset-password?token={token}"
-            print(f"Password reset link for {user.email}: {reset_link}")
-        
-        # Always return success to prevent email enumeration
-        return jsonify({"success": True})
+        UserService.request_password_reset(data['email'])
+        return jsonify({"success": True}) #always return success to prevent email enumeration
     
     @app.route('/api/reset-password', methods=['POST'])
     def reset_password():
         data = request.json
         token = data['token']
         password = data['password']
-        
-        # Find the token
-        token_record = PasswordResetToken.query.filter_by(
-            token=token, 
-            used=False
-        ).first()
-        
-        if not token_record or token_record.expires_at < datetime.utcnow():
-            return jsonify({"error": "Invalid or expired token"}), 400
-        
-        # Update the user's password
-        user = User.query.get(token_record.user_id)
-        user.password = User.hash_password(password)
-        
-        # Mark token as used
-        token_record.used = True
-        
-        db.session.commit()
-        
+
+        result = UserService.reset_password(token, password)
+        if 'error' in result:
+            return jsonify(result), 400
         return jsonify({"success": True})
     
     # User management routes
