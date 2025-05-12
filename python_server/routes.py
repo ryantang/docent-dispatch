@@ -358,13 +358,12 @@ def register_routes(app):
         user_id = session.get('user_id')
         data = request.json
         
-        # Parse the date
         tag_date = datetime.fromisoformat(data['date'].split('T')[0])
         
-        # Check if tag already exists for this date and time slot
         existing_tag = TagRequest.query.filter_by(
             date=tag_date,
-            time_slot=data['timeSlot']
+            time_slot=data['timeSlot'],
+            new_docent_id=user_id,
         ).first()
         
         if existing_tag:
@@ -372,7 +371,6 @@ def register_routes(app):
                 "error": "A tag request already exists for this date and time slot"
             }), 400
         
-        # Create new tag request
         new_tag = TagRequest(
             new_docent_id=user_id,
             date=tag_date,
