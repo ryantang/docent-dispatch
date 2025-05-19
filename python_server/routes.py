@@ -1,5 +1,5 @@
 from flask import jsonify, request, session
-from python_server.app import db
+from python_server.db_config import db
 from python_server.domain.users.model import User
 from python_server.domain.tags.model import TagRequest
 from python_server.utils import send_email_confirmation
@@ -9,7 +9,6 @@ import logging
 from functools import wraps
 from sqlalchemy import or_, and_
 from python_server.domain.users.service import UserService
-from python_server.domain.tags.service import TagRequestService
 
 # Authentication decorator
 def login_required(f):
@@ -101,6 +100,8 @@ def register_routes(app):
     @app.route('/api/tag-requests', methods=['GET'])
     @login_required
     def get_tag_requests():
+        from python_server.domain.tags.service import TagRequestService  # Import locally
+        
         user_id = session.get('user_id')
         user = User.query.get(user_id)
         

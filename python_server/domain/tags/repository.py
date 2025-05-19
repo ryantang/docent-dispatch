@@ -1,4 +1,4 @@
-from python_server.app import db
+from python_server.db_config import db
 from python_server.domain.tags.model import TagRequest
 from sqlalchemy import or_
 
