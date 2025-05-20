@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
-from flask_sqlalchemy import SQLAlchemy
+from python_server.db_config import db
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
@@ -32,7 +32,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "postgres
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
+db.init_app(app)
 Session(app)
 
 # Import routes after initializing app to avoid circular imports
