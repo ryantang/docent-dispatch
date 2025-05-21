@@ -1,5 +1,5 @@
-from python_server.domain.users.repository import UserRepository
-from python_server.domain.users.model import User
+from python_server.domain.users.user_repository import UserRepository
+from python_server.domain.users.user_model import User
 from datetime import datetime, timedelta
 import secrets
 
@@ -87,3 +87,20 @@ class UserService:
         UserRepository.update_user(user)
         
         return {"success": True}
+
+    @staticmethod
+    def create_user(data):
+        # Check if user already exists
+        existing_user = UserRepository.get_user_by_email(data['email'])
+        if existing_user:
+            return {"error": f"Email {data['email']} already registered"}, 400
+            
+        new_user = UserRepository.create_locked_user(
+            email=data['email'],
+            first_name=data['firstName'],
+            last_name=data['lastName'],
+            phone=data.get('phone'),
+            role=data['role']
+        )
+        
+        return new_user.to_dict(), 201

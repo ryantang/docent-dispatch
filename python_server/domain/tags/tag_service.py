@@ -1,6 +1,6 @@
 # python_server/domain/tags/service.py
 from datetime import datetime
-from python_server.domain.tags.repository import TagRequestRepository
+from python_server.domain.tags.tag_repository import TagRequestRepository
 
 class TagRequestService:
     @staticmethod

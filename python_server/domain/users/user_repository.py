@@ -1,5 +1,6 @@
-from python_server.app import db
-from python_server.domain.users.model import User, PasswordResetToken
+from python_server.db_config import db
+from python_server.domain.users.user_model import User, PasswordResetToken
+import secrets
 
 class UserRepository:
     @staticmethod
@@ -43,3 +44,18 @@ class UserRepository:
     @staticmethod
     def get_token_record(token):
         return PasswordResetToken.query.filter_by(token=token, used=False).first()
+
+    @staticmethod
+    def create_locked_user(email, first_name, last_name, phone, role):
+        # Create a user with a random password, forcing a reset
+        new_user = User(
+            email=email,
+            password=User.hash_password(secrets.token_hex(32)),  # Random unguessable password
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            role=role
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        return new_user

@@ -1,14 +1,14 @@
 from flask import jsonify, request, session
 from python_server.db_config import db
-from python_server.domain.users.model import User
-from python_server.domain.tags.model import TagRequest
+from python_server.domain.users.user_model import User
+from python_server.domain.tags.tag_model import TagRequest
 from python_server.utils import send_email_confirmation
 from datetime import datetime, timedelta
 import secrets
 import logging
 from functools import wraps
 from sqlalchemy import or_, and_
-from python_server.domain.users.service import UserService
+from python_server.domain.users.user_service import UserService
 
 # Authentication decorator
 def login_required(f):
@@ -108,26 +108,12 @@ def register_routes(app):
     @role_required(['coordinator'])
     def create_user():
         data = request.json
-
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=data['email']).first()
-        if existing_user:
-            return jsonify({"error": "Email already registered"}), 400
-
-        # Create new user, who will need to reset their password
-        new_user = User(
-            email=data['email'],
-            password=User.hash_password(secrets.token_hex(32)),
-            first_name=data['firstName'],
-            last_name=data['lastName'],
-            phone=data.get('phone'),
-            role=data['role']
-        )
-
-        db.session.add(new_user)
-        db.session.commit()
-
-        return jsonify(new_user.to_dict()), 201
+        user_data, status_code = UserService.create_user(data)
+        
+        if 'error' in user_data:
+            return jsonify(user_data), status_code
+            
+        return jsonify(user_data), status_code
 
     @app.route('/api/users/<int:user_id>', methods=['PATCH'])
     @login_required
@@ -196,48 +182,36 @@ def register_routes(app):
             "success": 0,
             "errors": []
         }
-
+        
         for i, user_data in enumerate(data):
             try:
-                # Check if user already exists
-                existing_user = User.query.filter_by(email=user_data['email']).first()
-                if existing_user:
+                # Process each user via the service layer
+                user_result, status_code = UserService.create_user(user_data)
+                
+                if 'error' in user_result:
                     results["errors"].append({
                         "line": i + 1,
-                        "email": user_data['email'],
-                        "error": "Email already registered"
+                        "email": user_data.get('email', 'unknown'),
+                        "error": user_result['error']
                     })
                     continue
-
-                # Create new user, who will need to reset their password
-                new_user = User(
-                    email=user_data['email'],
-                    password=User.hash_password(secrets.token_hex(32)),
-                    first_name=user_data['firstName'],
-                    last_name=user_data['lastName'],
-                    phone=user_data.get('phone'),
-                    role=user_data['role']
-                )
-
-                db.session.add(new_user)
+                
                 results["success"] += 1
-
+                
             except Exception as e:
                 results["errors"].append({
                     "line": i + 1,
                     "email": user_data.get('email', 'unknown'),
                     "error": str(e)
                 })
-
-        db.session.commit()
-
+        
         return jsonify(results)
     
     # Tag request routes
     @app.route('/api/tag-requests', methods=['GET'])
     @login_required
     def get_tag_requests():
-        from python_server.domain.tags.service import TagRequestService  # Import locally
+        from python_server.domain.tags.tag_service import TagRequestService  # Import locally
         
         user_id = session.get('user_id')
         user = User.query.get(user_id)
