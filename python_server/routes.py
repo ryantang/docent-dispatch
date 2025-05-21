@@ -119,35 +119,10 @@ def register_routes(app):
     @login_required
     @role_required(['coordinator'])
     def update_user(user_id):
-        user = User.query.get_or_404(user_id)
         data = request.json
-
-        # Update fields
-        if 'email' in data:
-            # Check if email is already taken by another user
-            existing_user = User.query.filter_by(email=data['email']).first()
-            if existing_user and existing_user.id != user_id:
-                return jsonify({"error": "Email already registered"}), 400
-            user.email = data['email']
-
-        if 'firstName' in data:
-            user.first_name = data['firstName']
-
-        if 'lastName' in data:
-            user.last_name = data['lastName']
-
-        if 'phone' in data:
-            user.phone = data['phone']
-
-        if 'role' in data:
-            user.role = data['role']
-
-        if 'password' in data:
-            user.password = User.hash_password(data['password'])
-
-        db.session.commit()
-
-        return jsonify(user.to_dict())
+        result, status_code = UserService.update_user_details(user_id, data)
+        
+        return jsonify(result), status_code
 
     @app.route('/api/users/<int:user_id>', methods=['DELETE'])
     @login_required

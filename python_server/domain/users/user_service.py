@@ -104,3 +104,34 @@ class UserService:
         )
         
         return new_user.to_dict(), 201
+
+    @staticmethod
+    def update_user_details(user_id, data):
+        user = UserRepository.get_user_by_id(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+
+        if 'email' in data:
+            # Check if email is already taken by another user
+            existing_user_with_email = UserRepository.get_user_by_email(data['email'])
+            if existing_user_with_email and existing_user_with_email.id != user_id:
+                return {"error": "Email already registered"}, 400
+            user.email = data['email']
+            
+        if 'firstName' in data:
+            user.first_name = data['firstName']
+            
+        if 'lastName' in data:
+            user.last_name = data['lastName']
+            
+        if 'phone' in data:
+            user.phone = data['phone']
+            
+        if 'role' in data:
+            user.role = data['role']
+            
+        if 'password' in data and data['password']:
+            user.password = User.hash_password(data['password'])
+        
+        UserRepository.update_user(user) # This just commits the session
+        return user.to_dict(), 200
