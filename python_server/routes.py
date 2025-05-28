@@ -1,14 +1,14 @@
 from flask import jsonify, request, session
 from python_server.db_config import db
-from python_server.domain.users.model import User
-from python_server.domain.tags.model import TagRequest
+from python_server.domain.users.user_model import User
+from python_server.domain.tags.tag_model import TagRequest
 from python_server.utils import send_email_confirmation
 from datetime import datetime, timedelta
 import secrets
 import logging
 from functools import wraps
 from sqlalchemy import or_, and_
-from python_server.domain.users.service import UserService
+from python_server.domain.users.user_service import UserService
 
 # Authentication decorator
 def login_required(f):
@@ -95,12 +95,98 @@ def register_routes(app):
             return jsonify(result), 400
         return jsonify({"success": True})
     
+     # User management routes
+    @app.route('/api/users', methods=['GET'])
+    @login_required
+    @role_required(['coordinator'])
+    def get_all_users():
+        users = User.query.all()
+        return jsonify([user.to_dict() for user in users])
+
+    @app.route('/api/users', methods=['POST'])
+    @login_required
+    @role_required(['coordinator'])
+    def create_user():
+        data = request.json
+        user_data, status_code = UserService.create_user(data)
+        
+        if 'error' in user_data:
+            return jsonify(user_data), status_code
+            
+        return jsonify(user_data), status_code
+
+    @app.route('/api/users/<int:user_id>', methods=['PATCH'])
+    @login_required
+    @role_required(['coordinator'])
+    def update_user(user_id):
+        data = request.json
+        result, status_code = UserService.update_user_details(user_id, data)
+        
+        return jsonify(result), status_code
+
+    @app.route('/api/users/<int:user_id>', methods=['DELETE'])
+    @login_required
+    @role_required(['coordinator'])
+    def delete_user(user_id):
+        user = User.query.get_or_404(user_id)
+
+        # Check if user has any tag requests
+        tag_requests = TagRequest.query.filter(
+            or_(
+                TagRequest.new_docent_id == user_id,
+                TagRequest.seasoned_docent_id == user_id
+            )
+        ).first()
+
+        if tag_requests:
+            return jsonify({
+                "error": "Cannot delete user with tag requests. Reassign or delete the requests first."
+            }), 400
+
+        db.session.delete(user)
+        db.session.commit()
+
+        return jsonify({"success": True})
+
+    @app.route('/api/users/csv', methods=['POST'])
+    @login_required
+    @role_required(['coordinator'])
+    def bulk_create_users():
+        data = request.json
+        results = {
+            "success": 0,
+            "errors": []
+        }
+        
+        for i, user_data in enumerate(data):
+            try:
+                # Process each user via the service layer
+                user_result, status_code = UserService.create_user(user_data)
+                
+                if 'error' in user_result:
+                    results["errors"].append({
+                        "line": i + 1,
+                        "email": user_data.get('email', 'unknown'),
+                        "error": user_result['error']
+                    })
+                    continue
+                
+                results["success"] += 1
+                
+            except Exception as e:
+                results["errors"].append({
+                    "line": i + 1,
+                    "email": user_data.get('email', 'unknown'),
+                    "error": str(e)
+                })
+        
+        return jsonify(results)
     
     # Tag request routes
     @app.route('/api/tag-requests', methods=['GET'])
     @login_required
     def get_tag_requests():
-        from python_server.domain.tags.service import TagRequestService  # Import locally
+        from python_server.domain.tags.tag_service import TagRequestService  # Import locally
         
         user_id = session.get('user_id')
         user = User.query.get(user_id)
