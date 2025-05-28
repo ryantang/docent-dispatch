@@ -8,6 +8,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import AdminPage from "@/pages/admin-page";
 import NotFound from "@/pages/not-found";
+import PasswordResetPage from "@/pages/password-reset-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
         allowedRoles={["coordinator"]} 
       />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={PasswordResetPage} />
       <Route component={NotFound} />
     </Switch>
   );

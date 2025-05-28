@@ -78,7 +78,7 @@ class UserService:
             return {"error": "Invalid or expired token"}, 400
         
         # Update the user's password
-        user = UserRepository.get_user_by_email(token_record.user_id)
+        user = UserRepository.get_user_by_id(token_record.user_id)
         user.password = User.hash_password(new_password)
         
         # Mark token as used
