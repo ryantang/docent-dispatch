@@ -39,9 +39,6 @@ def role_required(roles):
 
 def register_routes(app):
     # Auth routes
-    @app.route('/api/register', methods=['POST'])
-
-    
     @app.route('/api/login', methods=['POST'])
     def login():
         data = request.json

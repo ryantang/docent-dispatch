@@ -66,5 +66,9 @@ if __name__ == "__main__":
     # Create tables if they don't exist
     with app.app_context():
         db.create_all()
+
+        # Bootstrap admin user if needed
+        from python_server.bootstrap import bootstrap_admin_user
+        bootstrap_admin_user()
     
     app.run(host="0.0.0.0", port=5001, debug=True)
