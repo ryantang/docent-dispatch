@@ -40,17 +40,7 @@ def role_required(roles):
 def register_routes(app):
     # Auth routes
     @app.route('/api/register', methods=['POST'])
-    def register():
-        data = request.json
-        user_data, status_code = UserService.register_user(data)
-        
-        if 'error' in user_data:
-            return jsonify(user_data), status_code
-        
-        # Automatically log in the user
-        session['user_id'] = user_data['id']
-        
-        return jsonify(user_data), status_code
+
     
     @app.route('/api/login', methods=['POST'])
     def login():
@@ -60,7 +50,7 @@ def register_routes(app):
         if 'error' in user_data:
             return jsonify(user_data), status_code
         
-        # Set user in session
+        # Store user ID in session
         session['user_id'] = user_data['id']
         
         return jsonify(user_data), status_code

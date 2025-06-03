@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { InsertUser, LoginData, PasswordResetRequest, PasswordReset } from "@shared/schema";
+import { LoginData, PasswordResetRequest, PasswordReset } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,12 +23,11 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<UserData, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<UserData, Error, InsertUser>;
   requestPasswordResetMutation: UseMutationResult<void, Error, PasswordResetRequest>;
   resetPasswordMutation: UseMutationResult<void, Error, PasswordReset>;
 };
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -57,27 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: (error: Error) => {
       toast({
         title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const registerMutation = useMutation({
-    mutationFn: async (userData: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", userData);
-      return await res.json();
-    },
-    onSuccess: (user: UserData) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Registration failed",
         description: error.message,
         variant: "destructive",
       });
@@ -150,7 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         loginMutation,
         logoutMutation,
-        registerMutation,
         requestPasswordResetMutation,
         resetPasswordMutation,
       }}
