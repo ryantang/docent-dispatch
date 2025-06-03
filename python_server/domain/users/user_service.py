@@ -1,7 +1,9 @@
 from python_server.domain.users.user_repository import UserRepository
 from python_server.domain.users.user_model import User
+from python_server.utils import send_password_reset_email
 from datetime import datetime, timedelta
 import secrets
+import os
 
 class UserService:
     @staticmethod
@@ -64,11 +66,9 @@ class UserService:
             token = secrets.token_urlsafe(32)
             expires_at = datetime.utcnow() + timedelta(hours=1)
             UserRepository.create_password_reset_token(user.id, token, expires_at)
-            
-            # For demo purposes, log the token to the console
-            #TODO: Remove this and send the email with the reset link
-            reset_link = f"/reset-password?token={token}"
-            print(f"Password reset link for {user.email}: {reset_link}")
+            reset_link = f"{os.getenv('DOMAIN')}/reset-password?token={token}"
+
+            send_password_reset_email(user, reset_link)
 
     @staticmethod
     def reset_password(token, new_password):
