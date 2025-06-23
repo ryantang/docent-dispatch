@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CloudFormation template to create a PostgreSQL RDS database instance for the
+  Docent Dispatch application. This template supports creating different
+  configurations for test and production environments and uses AWS Secrets
+  Manager to handle the master password.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: The environment name (e.g., test, prod).
+    Default: test
+    AllowedValues:
+      - test
+      - prod
+  AppName:
+    Type: String
+    Description: The base name for application resources.
+    Default: docent-dispatch
+  DBName:
+    Type: String
+    Description: The name of the initial database to be created.
+    Default: docent_dispatch
+  DBMasterUsername:
+    Type: String
+    Description: The master username for the database.
+    Default: postgres
+  DBInstanceClass:
+    Type: String
+    Description: The instance class for the database. For prod, consider a larger instance.
+    Default: db.t4g.micro
+  AllocatedStorage:
+    Type: Number
+    Description: The size of the database (in GB).
+    Default: 20
+  SourceIp:
+    Type: String
+    Description: >-
+      The source IP address range that can connect to the database.
+      For production, this should be locked down to the VPC of the backend.
+    Default: 0.0.0.0/0
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub 'Allow DB access for ${AppName} ${Environment}'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref SourceIp
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-db-${Environment}-sg'
+        - Key: Environment
+          Value: !Ref Environment
+
+  DBMasterUserSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: !Sub "Master user password for ${AppName} DB in ${Environment}"
+      Name: !Sub '${AppName}/${Environment}/DatabaseCredentials'
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${DBMasterUsername}"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: !If [IsProd, Snapshot, Delete]
+    Properties:
+      DBInstanceIdentifier: !Sub '${AppName}-db-${Environment}'
+      DBName: !Ref DBName
+      Engine: postgres
+      EngineVersion: '17.4' # You might want to update this to the latest supported version
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      MasterUsername: !Join
+        - ''
+        - - '{{resolve:secretsmanager:'
+          - !Ref DBMasterUserSecret
+          - ':SecretString:username}}'
+      MasterUserPassword: !Join
+        - ''
+        - - '{{resolve:secretsmanager:'
+          - !Ref DBMasterUserSecret
+          - ':SecretString:password}}'
+      PubliclyAccessible: !If [IsProd, false, true]
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+      MultiAZ: !If [IsProd, true, false]
+      BackupRetentionPeriod: !If [IsProd, 7, 1]
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-db-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  DBEndpoint:
+    Description: 'The connection endpoint for the database'
+    Value: !GetAtt DBInstance.Endpoint.Address
+  DBPort:
+    Description: 'The port for the database'
+    Value: !GetAtt DBInstance.Endpoint.Port
+  DBSecurityGroupId:
+    Description: 'The ID of the security group created for the database'
+    Value: !GetAtt DBSecurityGroup.GroupId
+  DBMasterUserSecretArn:
+    Description: 'ARN of the secret containing the DB master credentials'
+    Value: !Ref DBMasterUserSecret 
