@@ -10,4 +10,5 @@ npm run build
 
 # Start the Python server
 echo "Starting Python Flask server..."
+cd python_server
 python run_python_server.py 

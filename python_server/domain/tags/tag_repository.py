@@ -1,5 +1,5 @@
-from python_server.db_config import db
-from python_server.domain.tags.tag_model import TagRequest
+from db_config import db
+from domain.tags.tag_model import TagRequest
 from sqlalchemy import or_
 
 class TagRequestRepository:

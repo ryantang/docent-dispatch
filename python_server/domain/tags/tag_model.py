@@ -1,4 +1,4 @@
-from python_server.db_config import db
+from db_config import db
 from datetime import datetime
 from sqlalchemy.orm import relationship
 

@@ -1,17 +1,50 @@
 from datetime import datetime
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError, ProfileNotFound
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
 
 AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def debug_aws_credentials():
+    """Debug AWS credential configuration"""
+    logger.info("=== AWS Credentials Debug Info ===")
+    
+    # Check environment variables
+    logger.info(f"AWS_PROFILE env var: {os.getenv('AWS_PROFILE', 'Not set')}")
+    logger.info(f"AWS_ACCESS_KEY_ID env var: {'Set' if os.getenv('AWS_ACCESS_KEY_ID') else 'Not set'}")
+    logger.info(f"AWS_SECRET_ACCESS_KEY env var: {'Set' if os.getenv('AWS_SECRET_ACCESS_KEY') else 'Not set'}")
+    logger.info(f"AWS_DEFAULT_REGION env var: {os.getenv('AWS_DEFAULT_REGION', 'Not set')}")
+    logger.info(f"SOURCE_EMAIL env var: {os.getenv('SOURCE_EMAIL', 'Not set')}")
+    
+    # Check boto3 session
+    try:
+        session = boto3.Session(profile_name=AWS_PROFILE if AWS_PROFILE != 'default' else None)
+        credentials = session.get_credentials()
+        if credentials:
+            logger.info(f"Boto3 credentials found - Access Key: {credentials.access_key[:8]}...")
+            logger.info(f"Session region: {session.region_name}")
+        else:
+            logger.error("No boto3 credentials found")
+    except ProfileNotFound as e:
+        logger.error(f"AWS Profile not found: {e}")
+    except Exception as e:
+        logger.error(f"Error checking boto3 session: {e}")
+
 
 def send_password_reset_email(user, reset_link):
-    print(f"sending password reset email to {user.email} with reset link {reset_link}")
+    logger.info(f"Sending password reset email to {user.email}")
+    
+    # Debug credentials before attempting to send
+    debug_aws_credentials()
 
     email_content = format_password_reset_email(user, reset_link)
     subject = email_content["subject"]
@@ -20,10 +53,51 @@ def send_password_reset_email(user, reset_link):
 
     recipients = [user.email]
     
-    # Create an SES client
-    print(f"creating ses client")
-    ses_client = boto3.client('ses', region_name='us-west-2')
+    try:
+        # Create an SES client with explicit session handling
+        logger.info("Creating SES client...")
+        
+        # Use profile if specified and not default
+        session_kwargs = {}
+        if AWS_PROFILE and AWS_PROFILE != 'default':
+            session_kwargs['profile_name'] = AWS_PROFILE
+            
+        session = boto3.Session(**session_kwargs)
+        ses_client = session.client('ses', region_name='us-west-2')
+        
+        # Test credentials by getting send quota (lightweight operation)
+        logger.info("Testing SES credentials...")
+        send_quota = ses_client.get_send_quota()
+        logger.info(f"SES send quota check successful: {send_quota['Max24HourSend']} emails/24h")
+        
+    except NoCredentialsError as e:
+        error_msg = f"AWS credentials not found: {str(e)}"
+        logger.error(error_msg)
+        logger.error("Ensure AWS credentials are configured via environment variables, AWS profile, or IAM role")
+        return {"success": False, "error": error_msg, "error_type": "NoCredentialsError"}
+        
+    except PartialCredentialsError as e:
+        error_msg = f"Incomplete AWS credentials: {str(e)}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg, "error_type": "PartialCredentialsError"}
+        
+    except ProfileNotFound as e:
+        error_msg = f"AWS profile '{AWS_PROFILE}' not found: {str(e)}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg, "error_type": "ProfileNotFound"}
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_msg = e.response['Error']['Message']
+        logger.error(f"AWS Client Error during setup - Code: {error_code}, Message: {error_msg}")
+        return {"success": False, "error": f"{error_code}: {error_msg}", "error_type": "ClientError"}
+        
+    except Exception as e:
+        error_msg = f"Unexpected error during SES client setup: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {"success": False, "error": error_msg, "error_type": "UnexpectedError"}
     
+    # Prepare email message
     email_message = {
         'Subject': {
             'Data': subject,
@@ -43,19 +117,32 @@ def send_password_reset_email(user, reset_link):
 
     try:
         # Send the email
-        print(f"sending email")
+        logger.info(f"Sending email to {recipients}")
+        source_email = os.getenv('SOURCE_EMAIL')
+        if not source_email:
+            raise ValueError("SOURCE_EMAIL environment variable not set")
+            
         response = ses_client.send_email(
-            Source=os.getenv('SOURCE_EMAIL'),
+            Source=source_email,
             Destination={
                 'ToAddresses': recipients
             },
             Message=email_message
         )
-        print(f"email sent")
+        logger.info(f"Email sent successfully - Message ID: {response['MessageId']}")
         return {"success": True, "message_id": response['MessageId']}
+        
     except ClientError as e:
-        print(f"error sending email: {e}")
-        return {"success": False, "error": str(e)}
+        error_code = e.response['Error']['Code']
+        error_msg = e.response['Error']['Message']
+        logger.error(f"SES Client Error - Code: {error_code}, Message: {error_msg}")
+        logger.error(f"Full error response: {e.response}")
+        return {"success": False, "error": f"{error_code}: {error_msg}", "error_type": "SESClientError"}
+        
+    except Exception as e:
+        error_msg = f"Unexpected error sending email: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {"success": False, "error": error_msg, "error_type": "UnexpectedError"}
 
 def format_password_reset_email(user, reset_link):
     subject = "SF Zoo Docent Tagging - Password Reset Request"
@@ -182,7 +269,10 @@ SF Zoo Docent Program Coordinator
     }
 
 def send_email_confirmation(tag):
-    print(f"inside send_email_confirmation for tag {tag.id}")
+    logger.info(f"Sending email confirmation for tag {tag.id}")
+    
+    # Debug credentials before attempting to send
+    debug_aws_credentials()
     
     email_content = format_tag_scheduling_email(tag)
     subject = email_content["subject"]
@@ -195,10 +285,51 @@ def send_email_confirmation(tag):
         #TODO: Add coordinator to email
     ]
     
-    # Create an SES client
-    print(f"creating ses client")
-    ses_client = boto3.client('ses', region_name='us-west-2')
+    try:
+        # Create an SES client with explicit session handling
+        logger.info("Creating SES client...")
+        
+        # Use profile if specified and not default
+        session_kwargs = {}
+        if AWS_PROFILE and AWS_PROFILE != 'default':
+            session_kwargs['profile_name'] = AWS_PROFILE
+            
+        session = boto3.Session(**session_kwargs)
+        ses_client = session.client('ses', region_name='us-west-2')
+        
+        # Test credentials by getting send quota (lightweight operation)
+        logger.info("Testing SES credentials...")
+        send_quota = ses_client.get_send_quota()
+        logger.info(f"SES send quota check successful: {send_quota['Max24HourSend']} emails/24h")
+        
+    except NoCredentialsError as e:
+        error_msg = f"AWS credentials not found: {str(e)}"
+        logger.error(error_msg)
+        logger.error("Ensure AWS credentials are configured via environment variables, AWS profile, or IAM role")
+        return {"success": False, "error": error_msg, "error_type": "NoCredentialsError"}
+        
+    except PartialCredentialsError as e:
+        error_msg = f"Incomplete AWS credentials: {str(e)}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg, "error_type": "PartialCredentialsError"}
+        
+    except ProfileNotFound as e:
+        error_msg = f"AWS profile '{AWS_PROFILE}' not found: {str(e)}"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg, "error_type": "ProfileNotFound"}
+        
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_msg = e.response['Error']['Message']
+        logger.error(f"AWS Client Error during setup - Code: {error_code}, Message: {error_msg}")
+        return {"success": False, "error": f"{error_code}: {error_msg}", "error_type": "ClientError"}
+        
+    except Exception as e:
+        error_msg = f"Unexpected error during SES client setup: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {"success": False, "error": error_msg, "error_type": "UnexpectedError"}
     
+    # Prepare email message
     email_message = {
         'Subject': {
             'Data': subject,
@@ -218,17 +349,30 @@ def send_email_confirmation(tag):
     
     try:
         # Send the email
-        print(f"sending email")
+        logger.info(f"Sending email to {recipients}")
+        source_email = os.getenv('SOURCE_EMAIL')
+        if not source_email:
+            raise ValueError("SOURCE_EMAIL environment variable not set")
+            
         response = ses_client.send_email(
-            Source=os.getenv('SOURCE_EMAIL'),
+            Source=source_email,
             Destination={
                 'ToAddresses': recipients
             },
             Message=email_message
         )
-        print(f"email sent")
+        logger.info(f"Email sent successfully - Message ID: {response['MessageId']}")
         return {"success": True, "message_id": response['MessageId']}
+        
     except ClientError as e:
-        print(f"error sending email: {e}")
-        return {"success": False, "error": str(e)}
+        error_code = e.response['Error']['Code']
+        error_msg = e.response['Error']['Message']
+        logger.error(f"SES Client Error - Code: {error_code}, Message: {error_msg}")
+        logger.error(f"Full error response: {e.response}")
+        return {"success": False, "error": f"{error_code}: {error_msg}", "error_type": "SESClientError"}
+        
+    except Exception as e:
+        error_msg = f"Unexpected error sending email: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {"success": False, "error": error_msg, "error_type": "UnexpectedError"}
 
