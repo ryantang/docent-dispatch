@@ -73,6 +73,7 @@ def serve(path):
 # Error handler for all exceptions
 @app.errorhandler(Exception)
 def handle_error(error):
+    print(f"FLASK ERROR: {str(error)}", flush=True)
     code = 500
     if hasattr(error, 'code'):
         code = error.code
