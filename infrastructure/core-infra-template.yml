@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Core infrastructure for the Docent Dispatch application.
+  This stack creates shared resources like the S3 bucket for deployment artifacts.
+
+Parameters:
+  AppName:
+    Type: String
+    Description: The base name for application resources.
+    Default: docent-dispatch
+
+Resources:
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AppName}-artifacts-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName} Source Artifacts'
+
+Outputs:
+  SourceBucketName:
+    Description: The name of the S3 bucket for storing application source bundles.
+    Value: !Ref SourceBucket
+    Export:
+      Name: !Sub '${AppName}-SourceBucketName' 
