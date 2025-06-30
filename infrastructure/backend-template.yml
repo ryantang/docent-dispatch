@@ -25,6 +25,9 @@ Parameters:
   SourceEmail:
     Type: String
     Description: The email address verified with SES for sending emails.
+  SSLCertificateArn:
+    Type: String
+    Description: The ARN of the SSL certificate for HTTPS. Required for enabling HTTPS.
 
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
@@ -82,10 +85,35 @@ Resources:
         - 'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
 
   # --- Security Groups ---
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for the Application Load Balancer"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTP traffic"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTPS traffic"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-lb-${Environment}-sg'
+
   AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub "Security group for ${AppName} ${Environment} backend"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+          Description: "Allow HTTP traffic from the Load Balancer"
       Tags:
         - Key: Name
           Value: !Sub '${AppName}-app-${Environment}-sg'
@@ -101,6 +129,7 @@ Resources:
       FromPort: 5432
       ToPort: 5432
       SourceSecurityGroupId: !GetAtt AppSecurityGroup.GroupId
+      Description: "Allow DB access from EB instances"
 
   # --- Elastic Beanstalk Application Version ---
   AppVersion:
@@ -130,7 +159,10 @@ Resources:
         # High-level environment settings
         - Namespace: 'aws:elasticbeanstalk:environment'
           OptionName: 'EnvironmentType'
-          Value: 'SingleInstance'
+          Value: 'LoadBalanced'
+        - Namespace: 'aws:elasticbeanstalk:environment'
+          OptionName: 'LoadBalancerType'
+          Value: 'application'
         - Namespace: 'aws:elasticbeanstalk:environment'
           OptionName: 'ServiceRole'
           Value: !Ref EBServiceRole
@@ -142,12 +174,47 @@ Resources:
         - Namespace: 'aws:ec2:instances'
           OptionName: 'InstanceTypes'
           Value: !Ref InstanceType
-        - Namespace: 'aws:ec2:vpc'
-          OptionName: 'AssociatePublicIpAddress'
-          Value: 'true' # Required for Single Instance without a load balancer in a default VPC
         - Namespace: 'aws:autoscaling:launchconfiguration'
           OptionName: 'SecurityGroups'
           Value: !Ref AppSecurityGroup
+        
+        # Auto Scaling configuration - minimize to 1 instance for cost
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'MinSize'
+          Value: '1'
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'MaxSize'
+          Value: '1'
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'Availability Zones'
+          Value: 'Any 1'
+        
+        # Load balancer configuration - using explicit SG
+        - Namespace: 'aws:elbv2:loadbalancer'
+          OptionName: 'SecurityGroups'
+          Value: !GetAtt LoadBalancerSecurityGroup.GroupId
+          
+        # HTTPS Listener configuration - EB will handle the rest
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'ListenerEnabled'
+          Value: 'true'
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'Protocol'
+          Value: 'HTTPS'
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'SSLCertificateArns'
+          Value: !Ref SSLCertificateArn
+        
+        # Process configuration
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'HealthCheckPath'
+          Value: '/api/health'
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'Port'
+          Value: '80'
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'Protocol'
+          Value: 'HTTP'
 
         # Python application configuration
         - Namespace: 'aws:elasticbeanstalk:application:environment'
@@ -187,10 +254,3 @@ Resources:
           Value: 'us-west-2'
       
       VersionLabel: !Ref AppVersion
-
-Outputs:
-  EnvironmentURL:
-    Description: The URL of the Elastic Beanstalk environment.
-    Value: !GetAtt EBEnvironment.EndpointURL
-    Export:
-      Name: !Sub '${AppName}-${Environment}-URL' 
