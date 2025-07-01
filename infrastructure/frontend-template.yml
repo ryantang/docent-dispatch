@@ -75,12 +75,29 @@ Resources:
     Properties:
       DistributionConfig:
         Comment: !Sub '${AppName} ${Environment} Frontend Distribution'
+        Aliases:
+          - tag.sfzoodocents.org
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
           OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # Managed-CORS-S3Origin
           ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03  # Managed-SecurityHeadersPolicy
+        CacheBehaviors:
+          - PathPattern: '/api/*'
+            TargetOriginId: BackendOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            # Forward all headers, cookies, and query strings for API requests
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # Managed-CachingDisabled
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # Managed-AllViewer
         DefaultRootObject: index.html
         Enabled: true
         HttpVersion: http2
@@ -91,6 +108,12 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity: ''
             OriginAccessControlId: !Ref OriginAccessControl
+          - Id: BackendOrigin
+            DomainName: !Ref BackendURL
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200
@@ -98,6 +121,10 @@ Resources:
           - ErrorCode: 404
             ResponseCode: 200
             ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:323517216812:certificate/d759c373-4cc1-487b-9438-acd644cd2279
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
         PriceClass: !If [IsProd, 'PriceClass_All', 'PriceClass_100']
 
 Outputs:

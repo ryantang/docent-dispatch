@@ -299,10 +299,12 @@ def register_routes(app):
         # Check permissions
         if (user.role == 'coordinator' or 
             (user.role == 'new_docent' and tag.new_docent_id == user_id and tag.status == 'requested')):
-            
-            db.session.delete(tag)
-            db.session.commit()
-            
-            return jsonify({"success": True})
-        
-        return jsonify({"error": "You don't have permission to delete this tag request"}), 403
+                    db.session.delete(tag)
+        db.session.commit()
+
+        return jsonify({"success": True})
+    
+    # Health check endpoint for load balancer
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        return jsonify({"status": "healthy", "service": "docent-dispatch"})
