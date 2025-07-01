@@ -1,6 +1,6 @@
-from python_server.domain.users.user_repository import UserRepository
-from python_server.domain.users.user_model import User
-from python_server.utils import send_password_reset_email
+from domain.users.user_repository import UserRepository
+from domain.users.user_model import User
+from utils import send_password_reset_email
 from datetime import datetime, timedelta
 import secrets
 import os

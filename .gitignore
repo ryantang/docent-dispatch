@@ -32,4 +32,11 @@ npm-debug.log*
 
 # Project specific
 attached_assets/
-attached_assets/Vibe code docent matching.pdf
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+#Deployment files
+*.zip

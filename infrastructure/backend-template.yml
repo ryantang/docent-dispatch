@@ -1,0 +1,256 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CloudFormation template for the Docent Dispatch Python backend on Elastic Beanstalk.
+  Optimized for low cost and easy maintenance via Single Instance type and Managed Updates.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: The environment name (e.g., test, prod).
+    Default: test
+    AllowedValues:
+      - test
+      - prod
+  AppName:
+    Type: String
+    Description: The base name for application resources.
+    Default: docent-dispatch
+  AppSourceBundleS3Key:
+    Type: String
+    Description: The S3 key for the application source bundle zip file.
+  InstanceType:
+    Type: String
+    Description: EC2 instance type for the environment. t4g instances are ARM-based and cost-effective.
+    Default: t4g.micro
+  SourceEmail:
+    Type: String
+    Description: The email address verified with SES for sending emails.
+  SSLCertificateArn:
+    Type: String
+    Description: The ARN of the SSL certificate for HTTPS. Required for enabling HTTPS.
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # --- IAM Roles and Policies ---
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Path: '/'
+  
+  AppInstancePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${AppName}-${Environment}-instance-policy'
+      Roles: [!Ref AppInstanceRole]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 'secretsmanager:GetSecretValue'
+            Resource: 
+              Fn::ImportValue: 
+                !Sub '${AppName}-db-${Environment}-DBMasterUserSecretArn'
+            # Resource: !ImportValue 'docent-dispatch-db-test-DBMasterUserSecretArn'
+          - Effect: Allow
+            Action: ['ses:SendEmail', 'ses:SendRawEmail']
+            Resource: '*'
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles: [!Ref AppInstanceRole]
+
+  # --- Elastic Beanstalk Service Role ---
+  EBServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: elasticbeanstalk.amazonaws.com
+            Action: sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
+
+  # --- Security Groups ---
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for the Application Load Balancer"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTP traffic"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTPS traffic"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-lb-${Environment}-sg'
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Security group for ${AppName} ${Environment} backend"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+          Description: "Allow HTTP traffic from the Load Balancer"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AppName}-app-${Environment}-sg'
+
+  # Allow backend to connect to the database
+  DBIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue:
+          !Sub '${AppName}-db-${Environment}-DBSecurityGroupId'
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !GetAtt AppSecurityGroup.GroupId
+      Description: "Allow DB access from EB instances"
+
+  # --- Elastic Beanstalk Application Version ---
+  AppVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref EBApplication
+      Description: 'Source code from S3, triggered by CloudFormation'
+      SourceBundle:
+        S3Bucket:
+          Fn::ImportValue:
+            !Sub '${AppName}-SourceBucketName'
+        S3Key: !Ref AppSourceBundleS3Key
+
+  # --- Elastic Beanstalk Application ---
+  EBApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Sub '${AppName}-${Environment}'
+
+  EBEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref EBApplication
+      EnvironmentName: !Sub '${AppName}-${Environment}'
+      SolutionStackName: '64bit Amazon Linux 2023 v4.5.2 running Python 3.11'
+      OptionSettings:
+        # High-level environment settings
+        - Namespace: 'aws:elasticbeanstalk:environment'
+          OptionName: 'EnvironmentType'
+          Value: 'LoadBalanced'
+        - Namespace: 'aws:elasticbeanstalk:environment'
+          OptionName: 'LoadBalancerType'
+          Value: 'application'
+        - Namespace: 'aws:elasticbeanstalk:environment'
+          OptionName: 'ServiceRole'
+          Value: !Ref EBServiceRole
+        
+        # Instance configuration
+        - Namespace: 'aws:autoscaling:launchconfiguration'
+          OptionName: 'IamInstanceProfile'
+          Value: !Ref AppInstanceProfile
+        - Namespace: 'aws:ec2:instances'
+          OptionName: 'InstanceTypes'
+          Value: !Ref InstanceType
+        - Namespace: 'aws:autoscaling:launchconfiguration'
+          OptionName: 'SecurityGroups'
+          Value: !Ref AppSecurityGroup
+        
+        # Auto Scaling configuration - minimize to 1 instance for cost
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'MinSize'
+          Value: '1'
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'MaxSize'
+          Value: '1'
+        - Namespace: 'aws:autoscaling:asg'
+          OptionName: 'Availability Zones'
+          Value: 'Any 1'
+        
+        # Load balancer configuration - using explicit SG
+        - Namespace: 'aws:elbv2:loadbalancer'
+          OptionName: 'SecurityGroups'
+          Value: !GetAtt LoadBalancerSecurityGroup.GroupId
+          
+        # HTTPS Listener configuration - EB will handle the rest
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'ListenerEnabled'
+          Value: 'true'
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'Protocol'
+          Value: 'HTTPS'
+        - Namespace: 'aws:elbv2:listener:443'
+          OptionName: 'SSLCertificateArns'
+          Value: !Ref SSLCertificateArn
+        
+        # Process configuration
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'HealthCheckPath'
+          Value: '/api/health'
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'Port'
+          Value: '80'
+        - Namespace: 'aws:elasticbeanstalk:environment:process:default'
+          OptionName: 'Protocol'
+          Value: 'HTTP'
+
+        # Python application configuration
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'PYTHONPATH'
+          Value: '/var/app/current'
+        - Namespace: 'aws:elasticbeanstalk:container:python'
+          OptionName: 'WSGIPath'
+          Value: 'app:app'
+
+        # Environment variables for the application
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'DB_SECRET_ARN'
+          Value:
+            Fn::ImportValue:
+              !Sub '${AppName}-db-${Environment}-DBMasterUserSecretArn'
+          # Value: !ImportValue 'docent-dispatch-db-test-DBMasterUserSecretArn'
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'DB_ENDPOINT'
+          Value:
+            Fn::ImportValue:
+              !Sub '${AppName}-db-${Environment}-DBEndpoint'
+          # Value: !ImportValue 'docent-dispatch-db-test-DBEndpoint'
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'DB_NAME'
+          Value:
+            Fn::ImportValue:
+              !Sub '${AppName}-db-${Environment}-DBName'
+          # Value: !ImportValue 'docent-dispatch-db-test-DBName'
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'SOURCE_EMAIL'
+          Value: !Ref SourceEmail
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'FLASK_ENV'
+          Value: !If [IsProd, 'production', 'development']
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'AWS_DEFAULT_REGION'
+          Value: 'us-west-2'
+      
+      VersionLabel: !Ref AppVersion

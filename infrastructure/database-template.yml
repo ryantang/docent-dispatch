@@ -105,12 +105,25 @@ Outputs:
   DBEndpoint:
     Description: 'The connection endpoint for the database'
     Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AppName}-db-${Environment}-DBEndpoint'
   DBPort:
     Description: 'The port for the database'
     Value: !GetAtt DBInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${AppName}-db-${Environment}-DBPort'
   DBSecurityGroupId:
     Description: 'The ID of the security group created for the database'
     Value: !GetAtt DBSecurityGroup.GroupId
+    Export:
+      Name: !Sub '${AppName}-db-${Environment}-DBSecurityGroupId'
   DBMasterUserSecretArn:
     Description: 'ARN of the secret containing the DB master credentials'
-    Value: !Ref DBMasterUserSecret 
+    Value: !Ref DBMasterUserSecret
+    Export:
+      Name: !Sub '${AppName}-db-${Environment}-DBMasterUserSecretArn'
+  DBName:
+    Description: 'The logical name of the database'
+    Value: !Ref DBName
+    Export:
+      Name: !Sub '${AppName}-db-${Environment}-DBName' 

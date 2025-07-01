@@ -1,11 +1,13 @@
 from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
-from python_server.db_config import db
+from db_config import db
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 import secrets
+import boto3
+import json
 
 # Load environment variables
 load_dotenv()
@@ -25,10 +27,28 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_PERMANENT"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 app.config["SESSION_USE_SIGNER"] = True
-app.config["SESSION_FILE_DIR"] = "./python_server/flask_session"
+app.config["SESSION_FILE_DIR"] = "./flask_session"
 
-# Database configuration
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/sf_zoo_docent")
+# --- Database Configuration ---
+DB_SECRET_ARN = os.environ.get("DB_SECRET_ARN")
+
+if DB_SECRET_ARN:
+    # AWS environment: Fetch credentials from Secrets Manager
+    secret_client = boto3.client('secretsmanager')
+    secret = secret_client.get_secret_value(SecretId=DB_SECRET_ARN)
+    db_credentials = json.loads(secret['SecretString'])
+    
+    db_user = db_credentials['username']
+    db_password = db_credentials['password']
+    db_endpoint = os.environ.get("DB_ENDPOINT")
+    db_name = os.environ.get("DB_NAME", "docent_dispatch")
+    
+    database_url = f"postgresql://{db_user}:{db_password}@{db_endpoint}/{db_name}"
+else:
+    # Local environment: Use default DATABASE_URL
+    database_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/sf_zoo_docent")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Initialize extensions
@@ -36,7 +56,7 @@ db.init_app(app)
 Session(app)
 
 # Import routes after initializing app to avoid circular imports
-from python_server.routes import register_routes
+from routes import register_routes
 
 # Register all routes with the app
 register_routes(app)
@@ -53,6 +73,7 @@ def serve(path):
 # Error handler for all exceptions
 @app.errorhandler(Exception)
 def handle_error(error):
+    print(f"FLASK ERROR: {str(error)}", flush=True)
     code = 500
     if hasattr(error, 'code'):
         code = error.code
@@ -68,7 +89,7 @@ if __name__ == "__main__":
         db.create_all()
 
         # Bootstrap admin user if needed
-        from python_server.bootstrap import bootstrap_admin_user
+        from bootstrap import bootstrap_admin_user
         bootstrap_admin_user()
     
     app.run(host="0.0.0.0", port=5001, debug=True)

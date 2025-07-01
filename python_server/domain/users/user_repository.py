@@ -1,5 +1,5 @@
-from python_server.db_config import db
-from python_server.domain.users.user_model import User, PasswordResetToken
+from db_config import db
+from domain.users.user_model import User, PasswordResetToken
 import secrets
 
 class UserRepository:

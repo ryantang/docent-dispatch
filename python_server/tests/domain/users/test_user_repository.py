@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from python_server.domain.users.user_repository import UserRepository
-from python_server.domain.users.user_model import User
+from domain.users.user_repository import UserRepository
+from domain.users.user_model import User
 
 class TestUserRepository:
-    @patch('python_server.domain.users.user_repository.secrets')
-    @patch('python_server.domain.users.user_repository.User')
-    @patch('python_server.domain.users.user_repository.db.session')
+    @patch('domain.users.user_repository.secrets')
+    @patch('domain.users.user_repository.User')
+    @patch('domain.users.user_repository.db.session')
     def test_create_locked_user(self, mock_session, mock_user_class, mock_secrets):
         mock_user = Mock()
         mock_user_class.return_value = mock_user

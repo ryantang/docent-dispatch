@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from python_server.domain.users.user_service import UserService
-from python_server.domain.users.user_repository import UserRepository
+from domain.users.user_service import UserService
+from domain.users.user_repository import UserRepository
 
 class TestUserService:
     

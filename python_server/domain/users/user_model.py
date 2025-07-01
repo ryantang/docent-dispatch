@@ -1,4 +1,4 @@
-from python_server.db_config import db
+from db_config import db
 from datetime import datetime
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.orm import relationship

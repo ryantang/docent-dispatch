@@ -1,8 +1,8 @@
 import os
-from python_server.db_config import db
-from python_server.domain.users.user_model import User
-from python_server.domain.users.user_repository import UserRepository
-from python_server.domain.users.user_service import UserService
+from db_config import db
+from domain.users.user_model import User
+from domain.users.user_repository import UserRepository
+from domain.users.user_service import UserService
 
 
 def bootstrap_admin_user():

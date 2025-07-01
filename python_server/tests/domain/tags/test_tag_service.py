@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
-from python_server.domain.tags.tag_service import TagRequestService
-from python_server.domain.tags.tag_repository import TagRequestRepository
+from domain.tags.tag_service import TagRequestService
+from domain.tags.tag_repository import TagRequestRepository
 
 class TestTagRequestService:
 

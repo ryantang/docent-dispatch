@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CloudFormation template for the Docent Dispatch frontend deployment.
+  Creates S3 bucket for static hosting and CloudFront distribution for CDN.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: The environment name (e.g., test, prod).
+    Default: test
+    AllowedValues:
+      - test
+      - prod
+  AppName:
+    Type: String
+    Description: The base name for application resources.
+    Default: docent-dispatch
+  BackendURL:
+    Type: String
+    Description: The backend API URL (Elastic Beanstalk URL).
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # --- S3 Bucket for Frontend Hosting ---
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AppName}-frontend-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html  # SPA routing
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  # --- S3 Bucket Policy for Public Read Access ---
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${FrontendBucket}/*'
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # --- CloudFront Origin Access Control ---
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AppName}-${Environment}-OAC'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # --- CloudFront Distribution ---
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${AppName} ${Environment} Frontend Distribution'
+        Aliases:
+          - tag.sfzoodocents.org
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # Managed-CORS-S3Origin
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03  # Managed-SecurityHeadersPolicy
+        CacheBehaviors:
+          - PathPattern: '/api/*'
+            TargetOriginId: BackendOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            # Forward all headers, cookies, and query strings for API requests
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # Managed-CachingDisabled
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # Managed-AllViewer
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !Ref OriginAccessControl
+          - Id: BackendOrigin
+            DomainName: !Ref BackendURL
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:323517216812:certificate/d759c373-4cc1-487b-9438-acd644cd2279
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        PriceClass: !If [IsProd, 'PriceClass_All', 'PriceClass_100']
+
+Outputs:
+  FrontendBucketName:
+    Description: Name of the S3 bucket for frontend hosting
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${AppName}-frontend-${Environment}-BucketName'
+  
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AppName}-frontend-${Environment}-DomainName'
+  
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AppName}-frontend-${Environment}-DistributionId'
+  
+  FrontendURL:
+    Description: Frontend application URL
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AppName}-frontend-${Environment}-URL' 
