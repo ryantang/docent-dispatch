@@ -80,7 +80,7 @@ def register_routes(app):
         result = UserService.reset_password(token, password)
         if 'error' in result:
             return jsonify(result), 400
-        return jsonify({"success": True})
+        return jsonify(result)
     
      # User management routes
     @app.route('/api/users', methods=['GET'])

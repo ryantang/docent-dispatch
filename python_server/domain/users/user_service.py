@@ -75,7 +75,7 @@ class UserService:
         token_record = UserRepository.get_token_record(token)
         
         if not token_record or token_record.expires_at < datetime.utcnow():
-            return {"error": "Invalid or expired token"}, 400
+            return {"error": "Invalid or expired token"}
         
         # Update the user's password
         user = UserRepository.get_user_by_id(token_record.user_id)
