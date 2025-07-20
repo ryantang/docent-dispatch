@@ -65,7 +65,7 @@ def test_db(app):
 def new_docent_user(test_db):
     """Create a new docent user"""
     user = User(
-        email='newdocent@test.com',
+        email='newdocent@example.com',
         first_name='New',
         last_name='Docent',
         role='new_docent',
@@ -79,7 +79,7 @@ def new_docent_user(test_db):
 def second_new_docent_user(test_db):
     """Create a second new docent user"""
     user = User(
-        email='newdocent2@test.com',
+        email='newdocent2@example.com',
         first_name='New2',
         last_name='Docent2',
         role='new_docent',
@@ -93,7 +93,7 @@ def second_new_docent_user(test_db):
 def seasoned_docent_user(test_db):
     """Create a seasoned docent user"""
     user = User(
-        email='seasoned@test.com',
+        email='seasoned@example.com',
         first_name='Seasoned',
         last_name='Docent',
         role='seasoned_docent',
@@ -107,7 +107,7 @@ def seasoned_docent_user(test_db):
 def authenticated_new_docent(test_client, new_docent_user):
     """Login as new docent and return client"""
     test_client.post('/api/login', json={
-        'email': 'newdocent@test.com',
+        'email': 'newdocent@example.com',
         'password': 'password123'
     })
     return test_client
@@ -116,7 +116,7 @@ def authenticated_new_docent(test_client, new_docent_user):
 def coordinator_user(test_db):
     """Create a coordinator user"""
     user = User(
-        email='coordinator@test.com',
+        email='coordinator@example.com',
         first_name='Coordinator',
         last_name='Admin',
         role='coordinator',
@@ -130,7 +130,7 @@ def coordinator_user(test_db):
 def authenticated_seasoned_docent(test_client, seasoned_docent_user):
     """Login as seasoned docent and return client"""
     test_client.post('/api/login', json={
-        'email': 'seasoned@test.com',
+        'email': 'seasoned@example.com',
         'password': 'password123'
     })
     return test_client
@@ -139,7 +139,7 @@ def authenticated_seasoned_docent(test_client, seasoned_docent_user):
 def authenticated_coordinator(test_client, coordinator_user):
     """Login as coordinator and return client"""
     test_client.post('/api/login', json={
-        'email': 'coordinator@test.com',
+        'email': 'coordinator@example.com',
         'password': 'password123'
     })
     return test_client
