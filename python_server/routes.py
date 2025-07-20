@@ -292,9 +292,7 @@ def register_routes(app):
         user = User.query.get(user_id)
         tag = TagRequest.query.get_or_404(tag_id)
 
-        if user.role == 'coordinator':
-            pass # coordinators can delete any tag request
-        else:
+        if user.role != 'coordinator': # coordinators can delete any tag request
             if tag.new_docent_id != user_id:
                 return jsonify({"error": "Cannot delete a tag request that belongs to another docent"}), 403
             if tag.status != 'requested':
