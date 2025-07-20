@@ -20,8 +20,6 @@ class TestTagRequestLifecycle:
         assert response.status_code == 201
         data = response.get_json()
 
-        print(f'data response is {data}')
-
         assert data['status'] == 'requested'
         assert data['date'] == future_date
         assert data['timeSlot'] == 'AM'
@@ -228,7 +226,7 @@ class TestTagRequestLifecycle:
         
         assert response.status_code == 403
         data = response.get_json()
-        assert 'tag request belongs to another docent' in data['error']
+        assert 'tag request that belongs to another docent' in data['error']
 
     def test_seasoned_docent_cannot_accept_past_date_request(self, authenticated_seasoned_docent, test_db, new_docent_user):
         """Test: Seasoned docent cannot accept request for past date"""
