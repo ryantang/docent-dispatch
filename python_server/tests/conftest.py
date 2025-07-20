@@ -113,10 +113,33 @@ def authenticated_new_docent(test_client, new_docent_user):
     return test_client
 
 @pytest.fixture
+def coordinator_user(test_db):
+    """Create a coordinator user"""
+    user = User(
+        email='coordinator@test.com',
+        first_name='Coordinator',
+        last_name='Admin',
+        role='coordinator',
+        password=User.hash_password('password123')
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+@pytest.fixture
 def authenticated_seasoned_docent(test_client, seasoned_docent_user):
     """Login as seasoned docent and return client"""
     test_client.post('/api/login', json={
         'email': 'seasoned@test.com',
+        'password': 'password123'
+    })
+    return test_client
+
+@pytest.fixture
+def authenticated_coordinator(test_client, coordinator_user):
+    """Login as coordinator and return client"""
+    test_client.post('/api/login', json={
+        'email': 'coordinator@test.com',
         'password': 'password123'
     })
     return test_client

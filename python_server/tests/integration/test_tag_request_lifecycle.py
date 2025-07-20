@@ -262,3 +262,39 @@ class TestTagRequestLifecycle:
         assert response.status_code == 400
         data = response.get_json()
         assert 'past date' in data['error']
+
+    def test_coordinator_can_delete_any_tag_request(self, authenticated_coordinator, test_db, new_docent_user, seasoned_docent_user):
+        """Test: Coordinator can delete any tag request (past, filled, etc.)"""
+        past_date = date.today() - timedelta(days=1)
+        future_date = date.today() + timedelta(days=7)
+
+        # Create past date request
+        past_request = TagRequest(
+            date=past_date,
+            time_slot='AM',
+            status='requested',
+            new_docent_id=new_docent_user.id
+        )
+
+        # Create filled request
+        filled_request = TagRequest(
+            date=future_date,
+            time_slot='PM',
+            status='filled',
+            new_docent_id=new_docent_user.id,
+            seasoned_docent_id=seasoned_docent_user.id
+        )
+
+        test_db.session.add(past_request)
+        test_db.session.add(filled_request)
+        test_db.session.commit()
+
+        # Coordinator should be able to delete past date request
+        response1 = authenticated_coordinator.delete(f'/api/tag-requests/{past_request.id}')
+        assert response1.status_code == 200
+        assert TagRequest.query.get(past_request.id) is None
+
+        # Coordinator should be able to delete filled request
+        response2 = authenticated_coordinator.delete(f'/api/tag-requests/{filled_request.id}')
+        assert response2.status_code == 200
+        assert TagRequest.query.get(filled_request.id) is None

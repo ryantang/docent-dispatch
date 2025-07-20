@@ -292,20 +292,24 @@ def register_routes(app):
         user = User.query.get(user_id)
         tag = TagRequest.query.get_or_404(tag_id)
 
-        if tag.new_docent_id != user_id:
-            return jsonify({"error": "Cannot delete a tag request that belongs to another docent"}), 403
+        if user.role == 'coordinator':
+            pass # coordinators can delete any tag request
+        else:
+            if tag.new_docent_id != user_id:
+                return jsonify({"error": "Cannot delete a tag request that belongs to another docent"}), 403
+            if tag.status != 'requested':
+                return jsonify({"error": "Cannot delete a tag request that is filled"}), 409
 
-        if tag.status != 'requested':
-            return jsonify({"error": "Cannot delete a tag request that is filled"}), 409
+        # Perform the deletion
+        try:
+            db.session.delete(tag)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "Failed to delete request"}), 500
 
-        if (user.role == 'coordinator' or 
-            (tag.new_docent_id == user_id and tag.status == 'requested')):
-                    db.session.delete(tag)
-                    db.session.commit()
-                    return jsonify({"success": True})
-
-        return jsonify({"error": "Unable to delete tag request"}), 500
-
+        logging.info(f"User {user_id} deleted tag request {tag_id}")
+        return jsonify({"success": True})
     
     # Health check endpoint for load balancer
     @app.route('/api/health', methods=['GET'])
