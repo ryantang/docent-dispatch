@@ -3,7 +3,7 @@ from db_config import db
 from domain.users.user_model import User
 from domain.tags.tag_model import TagRequest
 from utils import send_email_confirmation
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import secrets
 import logging
 from functools import wraps
@@ -204,7 +204,10 @@ def register_routes(app):
         user_id = session.get('user_id')
         data = request.json
         
-        tag_date = datetime.fromisoformat(data['date'].split('T')[0])
+        tag_date = datetime.fromisoformat(data['date'].split('T')[0]).date()
+
+        if tag_date < date.today():
+            return jsonify({"error": "Cannot create a tag request for a past date"}), 400
         
         existing_tag = TagRequest.query.filter_by(
             date=tag_date,
@@ -239,14 +242,17 @@ def register_routes(app):
         
         # Seasoned docents can claim a tag
         if user.role == 'seasoned_docent' and 'status' in data and data['status'] == 'filled':
-            if tag.status == 'requested':
-                tag.seasoned_docent_id = user_id
-                tag.status = 'filled'
-                logging.info(f"Sending email confirmation for tag {tag.id}")
-                print(f"calling send_email_confirmation for tag {tag.id}")
-                send_email_confirmation(tag)
-            else:
+            if tag.status == 'filled':
                 return jsonify({"error": "This tag request is no longer available"}), 400
+            if tag.date < date.today():
+                return jsonify({"error": "Cannot accept request for past date"}), 400
+
+            tag.seasoned_docent_id = user_id
+            tag.status = 'filled'
+            logging.info(f"Sending email confirmation for tag {tag.id}")
+            print(f"calling send_email_confirmation for tag {tag.id}")
+            send_email_confirmation(tag)
+
         
         # Coordinators can update any tag
         elif user.role == 'coordinator':
@@ -268,18 +274,8 @@ def register_routes(app):
             if 'notes' in data:
                 tag.notes = data['notes']
         
-        # New docents can only update their own requests if they're still open
-        elif user.role == 'new_docent' and tag.new_docent_id == user_id and tag.status == 'requested':
-            if 'notes' in data:
-                tag.notes = data['notes']
-            
-            if 'date' in data:
-                tag.date = datetime.fromisoformat(data['date'].split('T')[0])
-            
-            if 'timeSlot' in data:
-                tag.time_slot = data['timeSlot']
         else:
-            return jsonify({"error": "You don't have permission to update this tag request"}), 403
+            return jsonify({"error": "not authorized"}), 403
         
         db.session.commit()
         
@@ -295,14 +291,22 @@ def register_routes(app):
         user_id = session.get('user_id')
         user = User.query.get(user_id)
         tag = TagRequest.query.get_or_404(tag_id)
-        
+
+        if tag.new_docent_id != user_id:
+            return jsonify({"error": "Cannot delete a tag request belongs to another docent"}), 403
+
+        if tag.status == 'filled':
+            return jsonify({"error": "Cannot delete a tag request that is filled"}), 409
+
         # Check permissions
         if (user.role == 'coordinator' or 
-            (user.role == 'new_docent' and tag.new_docent_id == user_id and tag.status == 'requested')):
+            (tag.new_docent_id == user_id and tag.status == 'requested')):
                     db.session.delete(tag)
-        db.session.commit()
+                    db.session.commit()
+                    return jsonify({"success": True})
 
-        return jsonify({"success": True})
+        return jsonify({"error": "Unable to delete tag request"}), 500
+
     
     # Health check endpoint for load balancer
     @app.route('/api/health', methods=['GET'])
