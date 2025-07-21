@@ -1,5 +1,5 @@
 from domain.users.user_repository import UserRepository
-from domain.users.user_model import User
+from domain.users.user_model import User, UserRole
 from utils import send_password_reset_email
 from datetime import datetime, timedelta
 import secrets
@@ -75,7 +75,7 @@ class UserService:
         token_record = UserRepository.get_token_record(token)
         
         if not token_record or token_record.expires_at < datetime.utcnow():
-            return {"error": "Invalid or expired token"}, 400
+            return {"error": "Invalid or expired token"}
         
         # Update the user's password
         user = UserRepository.get_user_by_id(token_record.user_id)
@@ -90,6 +90,17 @@ class UserService:
 
     @staticmethod
     def create_user(data):
+        # Validate required fields
+        required_fields = ['email', 'firstName', 'lastName', 'role']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return {"error": f"Missing required field: {field}"}, 400
+
+        # Validate role
+        if not UserRole.is_valid(data['role']):
+            valid_roles = ', '.join(UserRole.get_valid_roles())
+            return {"error": f"Invalid role '{data['role']}'. Valid roles are: {valid_roles}"}, 400
+
         # Check if user already exists
         existing_user = UserRepository.get_user_by_email(data['email'])
         if existing_user:
