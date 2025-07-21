@@ -12,13 +12,13 @@ class TestAuthenticationFlows:
             'email': 'newdocent@example.com',
             'password': 'password123'
         })
-        
+
         assert response.status_code == 200
         data = response.get_json()
         assert data['email'] == 'newdocent@example.com'
         assert data['role'] == 'new_docent'
         assert 'password' not in data  # Password should not be returned
-        
+
         # Verify session persists - make authenticated request
         user_response = test_client.get('/api/user')
         assert user_response.status_code == 200
@@ -31,7 +31,7 @@ class TestAuthenticationFlows:
             'email': 'nonexistent@example.com',
             'password': 'password123'
         })
-        
+
         assert response.status_code == 401
         data = response.get_json()
         assert 'Invalid email or password' in data['error']
@@ -42,11 +42,11 @@ class TestAuthenticationFlows:
             'email': 'newdocent@example.com',
             'password': 'wrongpassword'
         })
-        
+
         assert response.status_code == 401
         data = response.get_json()
         assert 'Invalid email or password' in data['error']
-        
+
         # Verify failed attempt was recorded
         user = User.query.filter_by(email='newdocent@example.com').first()
         assert user.failed_login_attempts == 1
@@ -60,15 +60,15 @@ class TestAuthenticationFlows:
                 'password': 'wrongpassword'
             })
             assert response.status_code == 401
-        
+
         # 5th failed attempt should lock the account
         response = test_client.post('/api/login', json={
             'email': 'newdocent@example.com',
             'password': 'wrongpassword'
         })
-        
+
         assert response.status_code == 401
-        
+
         # Verify account is locked
         user = User.query.filter_by(email='newdocent@example.com').first()
         assert user.failed_login_attempts == 5
@@ -80,7 +80,7 @@ class TestAuthenticationFlows:
             'email': 'newdocent@example.com',
             'password': 'password123'
         })
-        
+
         assert response.status_code == 403
         data = response.get_json()
         assert 'Account is locked' in data['error']
@@ -94,15 +94,15 @@ class TestAuthenticationFlows:
         user.failed_login_attempts = 5
         user.account_locked_until = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
         db.session.commit()
-        
+
         # Should be able to login now
         response = test_client.post('/api/login', json={
             'email': 'newdocent@example.com',
             'password': 'password123'
         })
-        
+
         assert response.status_code == 200
-        
+
         # Verify lockout was cleared
         user = User.query.filter_by(email='newdocent@example.com').first()
         assert user.failed_login_attempts == 0
@@ -114,15 +114,15 @@ class TestAuthenticationFlows:
         user = User.query.filter_by(email='newdocent@example.com').first()
         user.failed_login_attempts = 3
         db.session.commit()
-        
+
         # Successful login
         response = test_client.post('/api/login', json={
             'email': 'newdocent@example.com',
             'password': 'password123'
         })
-        
+
         assert response.status_code == 200
-        
+
         # Verify failed attempts were reset
         user = User.query.filter_by(email='newdocent@example.com').first()
         assert user.failed_login_attempts == 0
@@ -133,17 +133,17 @@ class TestAuthenticationFlows:
         response = test_client.post('/api/request-password-reset', json={
             'email': 'newdocent@example.com'
         })
-        
+
         assert response.status_code == 200
         data = response.get_json()
         assert data['success'] is True
-        
+
         # Verify token was created
         token = PasswordResetToken.query.filter_by(user_id=new_docent_user.id).first()
         assert token is not None
         assert not token.used
         assert token.expires_at > datetime.utcnow()
-        
+
         # Verify email was sent
         mock_email.assert_called_once()
 
@@ -153,12 +153,12 @@ class TestAuthenticationFlows:
         response = test_client.post('/api/request-password-reset', json={
             'email': 'nonexistent@example.com'
         })
-        
+
         # Should still return success to prevent email enumeration
         assert response.status_code == 200
         data = response.get_json()
         assert data['success'] is True
-        
+
         # But no email should be sent
         mock_email.assert_not_called()
 
@@ -173,21 +173,21 @@ class TestAuthenticationFlows:
         )
         db.session.add(token)
         db.session.commit()
-        
+
         # Reset password
         response = test_client.post('/api/reset-password', json={
             'token': 'valid_reset_token',
             'password': 'newpassword123'
         })
-        
+
         assert response.status_code == 200
         data = response.get_json()
         assert data['success'] is True
-        
+
         # Verify token is marked as used
         token_record = PasswordResetToken.query.filter_by(token='valid_reset_token').first()
         assert token_record.used is True
-        
+
         # Verify password was changed
         user = User.query.get(new_docent_user.id)
         assert user.verify_password('newpassword123')
@@ -203,19 +203,13 @@ class TestAuthenticationFlows:
         )
         db.session.add(token)
         db.session.commit()
-        
-        # Debug: verify token was created with correct expiration
-        saved_token = PasswordResetToken.query.filter_by(token='expired_reset_token').first()
-        
+
         # Try to reset password
         response = test_client.post('/api/reset-password', json={
             'token': 'expired_reset_token',
             'password': 'newpassword123'
         })
-        
-        print(f"Response status: {response.status_code}")
-        print(f"Response data: {response.get_json()}")
-        
+
         assert response.status_code == 400
         data = response.get_json()
         assert 'Invalid or expired token' in data['error']
@@ -226,7 +220,7 @@ class TestAuthenticationFlows:
             'token': 'invalid_token',
             'password': 'newpassword123'
         })
-        
+
         assert response.status_code == 400
         data = response.get_json()
         assert 'Invalid or expired token' in data['error']
@@ -246,11 +240,11 @@ class TestAuthenticationFlows:
             'password': 'password123'
         })
         assert login_response.status_code == 200
-        
+
         # Verify authenticated
         user_response = test_client.get('/api/user')
         assert user_response.status_code == 200
-        
+
         # Logout
         logout_response = test_client.post('/api/logout')
         assert logout_response.status_code == 200
@@ -270,10 +264,10 @@ class TestAuthenticationFlows:
                 'password': 'wrongpassword'
             })
             assert response.status_code == 401
-        
+
         # Create new client (simulating different session)
         new_client = test_client.application.test_client()
-        
+
         # Make 3 more failed attempts with second client
         for i in range(3):
             response = new_client.post('/api/login', json={
@@ -282,7 +276,7 @@ class TestAuthenticationFlows:
             })
             if i < 2:
                 assert response.status_code == 401
-        
+
         # 5th attempt should lock account
         user = User.query.filter_by(email='newdocent@example.com').first()
         assert user.failed_login_attempts == 5

@@ -313,7 +313,6 @@ class TestAdminFunctionality:
 
         assert response.status_code == 200
         data = response.get_json()
-        print(data)
         assert data['success'] == 1  # Only first user should succeed
         assert len(data['errors']) == 3
 
