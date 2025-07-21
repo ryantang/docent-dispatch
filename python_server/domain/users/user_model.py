@@ -2,6 +2,22 @@ from db_config import db
 from datetime import datetime
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.orm import relationship
+from enum import Enum
+
+class UserRole(Enum):
+    NEW_DOCENT = 'new_docent'
+    SEASONED_DOCENT = 'seasoned_docent'
+    COORDINATOR = 'coordinator'
+
+    @classmethod
+    def is_valid(cls, role):
+        """Check if a role string is valid"""
+        return role in [r.value for r in cls]
+
+    @classmethod
+    def get_valid_roles(cls):
+        """Get list of valid role strings"""
+        return [r.value for r in cls]
 
 class User(db.Model):
     __tablename__ = 'users'
