@@ -69,8 +69,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@replit/vite-plugin-cartographer": "^0.1.2",
-    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
