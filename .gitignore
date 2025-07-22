@@ -3,6 +3,7 @@ dist
 .DS_Store
 server/public
 vite.config.ts.*
+.vite
 *.tar.gz
 
 # Environment variables
