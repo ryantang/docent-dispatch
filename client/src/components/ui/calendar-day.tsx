@@ -1,5 +1,5 @@
 import { format, isSameDay, parseISO } from "date-fns";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 import { useAuth } from "@/hooks/use-auth";
 
 type Props = {

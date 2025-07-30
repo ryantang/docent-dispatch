@@ -5,7 +5,7 @@ import { CalendarView } from "@/components/ui/calendar-view";
 import { TagRequestDialog } from "@/components/dialogs/tag-request-dialog";
 import { TagAcceptDialog } from "@/components/dialogs/tag-accept-dialog";
 import { TagDeleteDialog } from "@/components/dialogs/tag-delete-dialog";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

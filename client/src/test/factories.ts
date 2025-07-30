@@ -1,5 +1,5 @@
 import { format, addDays, addWeeks } from 'date-fns'
-import type { User, TagRequest } from '@shared/schema'
+import type { User, TagRequest } from '@shared/types'
 
 // User factory functions - independent data for tests
 export function createMockUser(
@@ -35,8 +35,8 @@ export function createMockUser(
     role,
     password: 'hashedpassword',
     failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLogin: null,
+    accountLockedUntil: null,
+    createdAt: new Date().toISOString(),
     ...overrides,
   }
 }
@@ -85,7 +85,7 @@ export function createCalendarWeekData(startDate: Date = new Date()) {
     const newDocentId = (index % 2) + 1
     
     requests.push(createMockTagRequest({
-      date,
+      date: format(date, "yyyy-MM-dd"),
       timeSlot,
       newDocentId,
       id: index + 1,
@@ -112,7 +112,7 @@ export function createPastTagRequest(
   const pastDate = addDays(new Date(), -daysAgo)
   
   return createMockTagRequest({
-    date: pastDate,
+    date: format(pastDate, 'yyyy-MM-dd'),
     ...overrides,
   })
 }
@@ -125,7 +125,7 @@ export function createMultipleTagRequests(
   return Array.from({ length: count }, (_, index) => 
     createMockTagRequest({
       id: index + 1,
-      date: addDays(new Date(), index + 1), // Spread across future dates
+      date: format(addDays(new Date(), index + 1), 'yyyy-MM-dd'), // Spread across future dates
       timeSlot: index % 2 === 0 ? 'AM' : 'PM',
       newDocentId: (index % 2) + 1, // Alternate between docent 1 and 2
       ...baseOverrides,
@@ -157,7 +157,7 @@ export function createRequestsForDateRange(
     timeSlots.forEach(timeSlot => {
       requests.push(createMockTagRequest({
         id: requestId++,
-        date: currentDate,
+        date: format(currentDate, 'yyyy-MM-dd'),
         timeSlot,
         newDocentId,
       }))

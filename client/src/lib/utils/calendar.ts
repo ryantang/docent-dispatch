@@ -12,7 +12,7 @@ import {
   isSameDay,
   parseISO
 } from "date-fns";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 
 export type CalendarDateRange = {
   startDate: Date;

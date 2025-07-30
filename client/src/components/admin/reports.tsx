@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Loader2 } from "lucide-react";
 import {

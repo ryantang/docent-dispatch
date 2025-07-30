@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { parseISO, isSameDay, isAfter, isBefore, addDays } from 'date-fns'
-import type { TagRequest, InsertTagRequest, UpdateTagRequest } from '@shared/schema'
+import type { TagRequest, InsertTagRequest, UpdateTagRequest } from '@shared/types'
 import { mockUsers, mockSessions } from './auth'
 
 // Mock tag requests database

@@ -2,7 +2,7 @@ import React from 'react'
 import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import type { User } from '@shared/schema'
+import type { User } from '@shared/types'
 import { AuthProvider } from '@/hooks/use-auth'
 import { 
   clearMockSessions, 

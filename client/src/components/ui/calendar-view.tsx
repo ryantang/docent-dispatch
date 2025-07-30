@@ -16,7 +16,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "@/components/ui/calendar-day";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";

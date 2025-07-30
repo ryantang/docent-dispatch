@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { User } from '@shared/schema'
+import type { User } from '@shared/types'
 
 // Mock session storage
 export const mockSessions = new Map<string, User>()
@@ -15,8 +15,8 @@ export const mockUsers: User[] = [
     phone: '(415) 555-1234',
     password: 'hashedpassword',
     failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLogin: null,
+    accountLockedUntil: null,
+    createdAt: new Date().toISOString(),
   },
   {
     id: 2,
@@ -27,8 +27,8 @@ export const mockUsers: User[] = [
     phone: '(415) 555-5678',
     password: 'hashedpassword',
     failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLogin: null,
+    accountLockedUntil: null,
+    createdAt: new Date().toISOString(),
   },
   {
     id: 3,
@@ -39,8 +39,8 @@ export const mockUsers: User[] = [
     phone: '(415) 555-9999',
     password: 'hashedpassword',
     failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLogin: null,
+    accountLockedUntil: null,
+    createdAt: new Date().toISOString(),
   },
 ]
 
@@ -65,7 +65,7 @@ export const authHandlers = [
     }
 
     // Check if account is locked
-    if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
+    if (user.accountLockedUntil && new Date() < new Date(user.accountLockedUntil)) {
       return HttpResponse.json(
         { error: 'Account is locked' },
         { status: 401 }
