@@ -519,7 +519,7 @@ describe('Tag Request Workflows', () => {
   describe('Request State & Permissions', () => {
     test('new docents should only see their own requests', async () => {
       const newDocent = mockUsers[0] // Jane Doe
-      const otherNewDocent = createMockUser('new_docent', { id: 4, email: 'other@test.com', firstName: 'Bob', lastName: 'Wilson' })
+      const otherNewDocent = createMockUser('new_docent', { id: 4, email: 'other@example.com', firstName: 'Bob', lastName: 'Wilson' })
       const seasonedDocent = mockUsers[1] // John Smith
       
       // Add the other new docent to mock users for proper relationship population
@@ -597,8 +597,8 @@ describe('Tag Request Workflows', () => {
     test('seasoned docents see all available requests', async () => {
       const seasonedDocent = mockUsers[1] // John Smith
       const newDocent1 = mockUsers[0] // Jane Doe
-      const newDocent2 = createMockUser('new_docent', { id: 4, email: 'other@test.com', firstName: 'Bob', lastName: 'Wilson' })
-      const otherSeasonedDocent = createMockUser('seasoned_docent', { id: 5, email: 'alice@test.com', firstName: 'Alice', lastName: 'Johnson' })
+      const newDocent2 = createMockUser('new_docent', { id: 4, email: 'other@example.com', firstName: 'Bob', lastName: 'Wilson' })
+      const otherSeasonedDocent = createMockUser('seasoned_docent', { id: 5, email: 'alice@example.com', firstName: 'Alice', lastName: 'Johnson' })
       
       // Add the new users to mock users for proper relationship population
       mockUsers.push(newDocent2, otherSeasonedDocent)
@@ -674,11 +674,11 @@ describe('Tag Request Workflows', () => {
     })
 
     test('coordinators see all requests regardless of status', async () => {
-      const coordinator = mockUsers[2] // Sarah Connor
+      const coordinator = mockUsers[2] // Admin user
       const newDocent1 = mockUsers[0] // Jane Doe
-      const newDocent2 = createMockUser('new_docent', { id: 4, email: 'bob@test.com', firstName: 'Bob', lastName: 'Wilson' })
+      const newDocent2 = createMockUser('new_docent', { id: 4, email: 'bob@example.com', firstName: 'Bob', lastName: 'Wilson' })
       const seasonedDocent1 = mockUsers[1] // John Smith
-      const seasonedDocent2 = createMockUser('seasoned_docent', { id: 5, email: 'alice@test.com', firstName: 'Alice', lastName: 'Johnson' })
+      const seasonedDocent2 = createMockUser('seasoned_docent', { id: 5, email: 'alice@example.com', firstName: 'Alice', lastName: 'Johnson' })
       
       // Add the new users to mock users for proper relationship population
       mockUsers.push(newDocent2, seasonedDocent2)
@@ -773,7 +773,7 @@ describe('Tag Request Workflows', () => {
     test('proper error handling for concurrent request acceptance', async () => {
       const seasonedDocent1 = mockUsers[1] // John Smith  
       const seasonedDocent2 = createMockUser('seasoned_docent', { 
-        id: 5, email: 'alice@test.com', firstName: 'Alice', lastName: 'Johnson' 
+        id: 5, email: 'alice@example.com', firstName: 'Alice', lastName: 'Johnson' 
       })
       const newDocent = mockUsers[0] // Jane Doe
       
@@ -846,7 +846,8 @@ describe('Tag Request Workflows', () => {
     })
 
     test.skip('handles edge cases around current date/time', async () => {
-      // Would test behavior at midnight, day boundaries, etc.
+      // Would test behavior at midnight, day boundaries, daylight savings etc.
+      //historically had issues in the late afternoon PST when it was the next day in UTC.
       expect(true).toBe(true) // Placeholder
     })
   })

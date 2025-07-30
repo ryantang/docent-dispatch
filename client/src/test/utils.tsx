@@ -146,25 +146,6 @@ export function getPastDateString(daysAgo: number): string {
   return pastDate.toISOString().split('T')[0] // YYYY-MM-DD format
 }
 
-// Mock window.confirm and window.alert for tests
-export function mockWindowConfirm(returnValue: boolean = true) {
-  const originalConfirm = window.confirm
-  window.confirm = vi.fn(() => returnValue)
-  
-  return () => {
-    window.confirm = originalConfirm
-  }
-}
-
-export function mockWindowAlert() {
-  const originalAlert = window.alert
-  window.alert = vi.fn()
-  
-  return () => {
-    window.alert = originalAlert
-  }
-}
-
 // Helper functions for test IDs (following best practices)
 export function getCalendarDayTestId(daysFromNow: number): string {
   return `calendar-day-${getFutureDateString(daysFromNow)}`
