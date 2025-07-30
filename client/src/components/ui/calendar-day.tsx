@@ -53,7 +53,9 @@ export function CalendarDay({
   };
 
   const shouldShowTag = (tag: TagRequest) => {
-    if (isNewDocent) {
+    if (user?.role === 'coordinator') {
+      return true; // Coordinators see all requests regardless of status
+    } else if (isNewDocent) {
       return tag.newDocentId === user?.id;
     } else {
       return tag.status === "requested" || tag.seasonedDocentId === user?.id;
