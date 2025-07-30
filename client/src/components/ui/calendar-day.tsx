@@ -1,5 +1,5 @@
 import { format, isSameDay, parseISO } from "date-fns";
-import { TagRequest } from "@shared/schema";
+import { TagRequest } from "@shared/types";
 import { useAuth } from "@/hooks/use-auth";
 
 type Props = {
@@ -34,6 +34,9 @@ export function CalendarDay({
   
   const dayNumber = date.getDate();
 
+  // Create test ID for the calendar day
+  const dayTestId = `calendar-day-${format(date, 'yyyy-MM-dd')}`;
+
   const renderTagContent = (tag: TagRequest) => {
     const newDocentName = tag.newDocent ? `${tag.newDocent.firstName} ${tag.newDocent.lastName}` : 'You';
     const seasonedDocentName = tag.seasonedDocent ? `${tag.seasonedDocent.firstName} ${tag.seasonedDocent.lastName}` : 'Seasoned Docent';
@@ -50,7 +53,9 @@ export function CalendarDay({
   };
 
   const shouldShowTag = (tag: TagRequest) => {
-    if (isNewDocent) {
+    if (user?.role === 'coordinator') {
+      return true; // Coordinators see all requests regardless of status
+    } else if (isNewDocent) {
       return tag.newDocentId === user?.id;
     } else {
       return tag.status === "requested" || tag.seasonedDocentId === user?.id;
@@ -59,6 +64,7 @@ export function CalendarDay({
   
   return (
     <div 
+      data-testid={dayTestId}
       className={`
         border border-gray-300 rounded-lg overflow-hidden calendar-date
         ${!isInCurrentMonth ? 'opacity-50' : ''}
@@ -81,6 +87,7 @@ export function CalendarDay({
       <div className="px-1 pb-1">
         {amTag && shouldShowTag(amTag) ? (
           <div 
+            data-testid={`tag-request-${format(date, 'yyyy-MM-dd')}-am`}
             className={`
               text-sm p-2 rounded mb-1
               ${amTag.status === "requested" 
@@ -99,6 +106,7 @@ export function CalendarDay({
           </div>
         ) : !isPast && isNewDocent && (
           <div 
+            data-testid={`slot-${format(date, 'yyyy-MM-dd')}-am`}
             className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -112,6 +120,7 @@ export function CalendarDay({
         
         {pmTag && shouldShowTag(pmTag) ? (
           <div 
+            data-testid={`tag-request-${format(date, 'yyyy-MM-dd')}-pm`}
             className={`
               text-sm p-2 rounded mb-1
               ${pmTag.status === "requested" 
@@ -130,6 +139,7 @@ export function CalendarDay({
           </div>
         ) : !isPast && isNewDocent && (
           <div 
+            data-testid={`slot-${format(date, 'yyyy-MM-dd')}-pm`}
             className="border-2 border-dashed border-gray-300 text-sm p-2 rounded mb-1 hover:bg-gray-100 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();

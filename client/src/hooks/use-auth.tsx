@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { LoginData, PasswordResetRequest, PasswordReset } from "@shared/schema";
+import { LoginData, PasswordResetRequest, PasswordReset } from "@shared/types";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
